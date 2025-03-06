@@ -1,0 +1,8 @@
+{
+    "branches": [
+        { "name": "NPS.cal.fly.adcSampWaveform", "type": "Double_t", "is_array": true, "variable": "sampWaveform" },
+        { "name": "NPS.cal.fly.adcCounter", "type": "Double_t", "is_array": true, "variable": "adcCounter" },
+        { "name": "T.hms.hT1_tdcTime", "type": "Double_t", "variable": "hT1_time" },
+        { "name": "H.react.x", "type": "Double_t", "variable": "vx" }
+      ]
+}

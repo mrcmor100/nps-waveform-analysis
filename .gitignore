@@ -1,0 +1,46 @@
+# Ignore data directory
+/data/
+
+# Ignore build directories
+/build/
+*/build/
+
+# Ignore CMake generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Makefile
+cmake_install.cmake
+CTestTestfile.cmake
+
+# Ignore compiled object files and libraries
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Ignore compiled binary
+/bin/
+*/bin/
+
+# Ignore the CTest testing directory
+CTestTestfile.cmake
+
+# Ignore Google Test build artifacts
+googletest/
+googletest_build/
+
+# Ignore IDE specific files
+.vscode/
+.idea/
+
+# Ignore other system files
+.DS_Store
+Thumbs.db
+
+# Ignore user-specific files (e.g., vim, emacs)
+*~ 
+*.swp
+*.swo
