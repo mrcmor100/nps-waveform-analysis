@@ -1,24 +1,31 @@
 #include <iostream>
 #include <TTree.h>
 #include "ConfigManager.hpp"
+#include "FileManager.hpp"
 #include "BranchManager.hpp"
 #include "ReferenceManager.hpp"
 
 int main() {
+    
+    int run = 5200;
+    int block = 10;
     ConfigManager config("config/config.json");
 
-    // Input File(s) manager
-    //TTree* tree = new TTree("T", "Example Tree");
+    FileManager fileManager(config);
+    TChain* tree = fileManager.LoadTChain(run);
+    TFile* outputFile = fileManager.CreateOutputFile(run, 0);
 
     BranchManager branchManager(tree, config);
     ReferenceManager refManager(config);
 
     branchManager.PrintLoadedBranches();
 
-    int run = 5200;
-    int block = 10;
-    std::string waveformFile = refManager.GetReferenceWaveform(run, block);
-    std::cout << "Waveform file for run " << run << ", block " << block << ": " << waveformFile << std::endl;
+    auto* interpolator = refManager.GetInterpolator(block);
+    if (interpolator) {
+        std::cout << "Interpolator loaded for block " << block << std::endl;
+    } else {
+        std::cout << "Interpolator not available for block " << block << std::endl;
+    }
 
     delete tree;
     return 0;

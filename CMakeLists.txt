@@ -10,7 +10,7 @@ add_compile_options(-O3)
 include(FetchContent)
 
 # --- Find ROOT ---
-find_package(ROOT REQUIRED COMPONENTS RIO Hist Tree ROOTVecOps)
+find_package(ROOT REQUIRED COMPONENTS RIO Hist Tree ROOTVecOps MathMore)
 
 # Define ROOT include directories
 include("${ROOT_USE_FILE}")
@@ -27,7 +27,8 @@ if (NOT nlohmann_json_FOUND)
 endif()
 
 # --- Project Source Files ---
-add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchManager.cpp src/ReferenceManager.cpp)
+add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchManager.cpp 
+  src/ReferenceManager.cpp src/FileManager.cpp)
 
 # --- Include Directories ---
 target_include_directories(RootWaveformAnalysis PRIVATE ${ROOT_INCLUDE_DIRS} include)
