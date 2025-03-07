@@ -1,46 +1,45 @@
 {
-  //Make everything based on the project root directory, not global for modularity
   "project_settings": {
-    "base_path": "./", //Where the data goes, or move to top dir for drop-in from swif2
-    "waveform_subdir": "waveforms/", // Where the reference waveform text files go
-    "tdc_subdir": "tdc_offsets/", // A directory for a single file, but more could be added as needed
+    "base_path": "./", 
+    "waveform_subdir": "waveforms/", 
+    "tdc_subdir": "tdc_offsets/", 
     "replays_subdir": "replays/",
     "output_subdir": "output/",
     "num_cores": 8
   },
   "global": {
-    // Calorimeter global parameters
-    "nchannel": 16, // Number of fADC channels in each fADC card
-    "ncol": 30, // Calorimeter specific number of columns
-    "nlin": 36, // Calorimeter specific number of rows
+    
+    "nchannel": 16, 
+    "ncol": 30, 
+    "nlin": 36, 
 
-    // Fitting parameters
-    "maxpulses": 4, //TODO - Move out to fitting abstraction
-    "maxwfpulses": 12, //TODO - Move out to fitting abstraction
+    
+    "maxpulses": 4, 
+    "maxwfpulses": 12, 
 
-    // Temperature parameters and function.
-    "ntemp": 56, // Incorporate Temperature module / class
+    
+    "ntemp": 56, 
 
-    // All of these are ADC specific parameters - set to specific ADCs?
-    "ntime": 110, // ntime is an adc parameter, but needed in fitting.
+    
+    "ntime": 110, 
     "nfADC": 7,
     "dt": 4.0,
     "nslots": 1104,
     "ADCtomV": 0.244140625,
     "integtopC": 0.020
   },
-  //Overrides of global settings like for run 55-56, ntime is 100 instead of 110
-  //run_patameters[param]
-  // param["range"][0]
-  //  Global overrides if param[<name>] is not range.
+  
+  
+  
+  
   "run_parameters": [
     {
-      // Override global ntime for runs 55 - 56 to ntime=100
+      
       "range": [55, 56],
       "ntime": 100
     },
     {
-      // Override global timerefacc to -10 for run 2016
+      
       "range": [2016, 2016],
       "timerefacc": -10
     }
@@ -56,9 +55,44 @@
     { "range": [5236, 6151], "path": "5217-5236/ref_wf_%d.txt" }
   ],
   "branches": [
-    { "name": "NPS.cal.fly.adcSampWaveform", "type": "Double_t", "is_array": true, "variable": "sampWaveform" },
-    { "name": "NPS.cal.fly.adcCounter", "type": "Double_t", "is_array": true, "variable": "adcCounter" },
-    { "name": "T.hms.hT1_tdcTime", "type": "Double_t", "variable": "hT1_time" },
-    { "name": "H.react.x", "type": "Double_t", "variable": "vx" }
+    { "name": "Ndata.NPS.cal.fly.adcSampWaveform", "type": "Int_t", "is_array": false, "variable": "NSampWaveForm"},
+    { "name": "NPS.cal.fly.adcSampWaveform", "type": "Double_t", "is_array": true, "variable": "SampWaveForm"},
+    { "name": "Ndata.NPS.cal.fly.adcCounter", "type": "Int_t", "is_array": false, "variable": "NadcCounter"},
+    { "name": "NPS.cal.fly.adcCounter", "type": "Double_t", "is_array": true, "variable": "adcCounter"},
+    { "name": "Ndata.NPS.cal.fly.adcSampPulseAmp", "type": "Int_t", "is_array": false, "variable": "NadcSampPulseAmp"},
+    { "name": "NPS.cal.fly.adcSampPulseAmp", "type": "Double_t", "is_array": true, "variable": "adcSampPulseAmp"},
+    { "name": "Ndata.NPS.cal.fly.adcSampPulseInt", "type": "Int_t", "is_array": false, "variable": "NadcSampPulseInt"},
+    { "name": "NPS.cal.fly.adcSampPulseInt", "type": "Double_t", "is_array": true, "variable": "adcSampPulseInt"},
+    { "name": "Ndata.NPS.cal.fly.adcSampPed", "type": "Int_t", "is_array": false, "variable": "NadcSampPulsePed"},
+    { "name": "NPS.cal.fly.adcSampPed", "type": "Double_t", "is_array": true, "variable": "adcSampPulsePed"},
+    { "name": "Ndata.NPS.cal.fly.adcSampPulseTime", "type": "Int_t", "is_array": false, "variable": "NadcSampPulseTime"},
+    { "name": "NPS.cal.fly.adcSampPulseTime", "type": "Double_t", "is_array": true, "variable": "adcSampPulseTime"},
+    { "name": "Ndata.NPS.cal.fly.adcSampPulseTimeRaw", "type": "Int_t", "is_array": false, "variable": "NadcSampPulseTimeRaw"},
+    { "name": "NPS.cal.fly.adcSampPulseTimeRaw", "type": "Double_t", "is_array": true, "variable": "adcSampPulseTimeRaw"},
+    { "name": "T.hms.hT1_tdcTime", "type": "Double_t", "is_array": false, "variable": "hT1_tdcTime"},
+    { "name": "T.hms.hT2_tdcTime", "type": "Double_t", "is_array": false, "variable": "hT2_tdcTime"},
+    { "name": "T.hms.hT3_tdcTime", "type": "Double_t", "is_array": false, "variable": "hT3_tdcTime"},
+    { "name": "T.hms.hTRIG1_tdcTime", "type": "Double_t", "is_array": false, "variable": "hTRIG1_tdcTime"},
+    { "name": "T.hms.hTRIG2_tdcTime", "type": "Double_t", "is_array": false, "variable": "hTRIG2_tdcTime"},
+    { "name": "T.hms.hTRIG3_tdcTime", "type": "Double_t", "is_array": false, "variable": "hTRIG3_tdcTime"},
+    { "name": "T.hms.hTRIG4_tdcTime", "type": "Double_t", "is_array": false, "variable": "hTRIG4_tdcTime"},
+    { "name": "T.hms.hTRIG5_tdcTime", "type": "Double_t", "is_array": false, "variable": "hTRIG5_tdcTime"},
+    { "name": "T.hms.hTRIG6_tdcTime", "type": "Double_t", "is_array": false, "variable": "hTRIG6_tdcTime"},
+    { "name": "beta", "type": "Double_t", "is_array": false, "variable": "beta"},
+    { "name": "cernpeSum", "type": "Double_t", "is_array": false, "variable": "cernpeSum"},
+    { "name": "caletracknorm", "type": "Double_t", "is_array": false, "variable": "caletracknorm"},
+    { "name": "caletottracknorm", "type": "Double_t", "is_array": false, "variable": "caletottracknorm"},
+    { "name": "caletotnorm", "type": "Double_t", "is_array": false, "variable": "caletotnorm"},
+    { "name": "H.react.x", "type": "Double_t", "is_array": false, "variable": "vx"},
+    { "name": "H.react.y", "type": "Double_t", "is_array": false, "variable": "vy"},
+    { "name": "H.react.z", "type": "Double_t", "is_array": false, "variable": "vz"},
+    { "name": "H.gtr.dp", "type": "Double_t", "is_array": false, "variable": "dp"},
+    { "name": "H.gtr.th", "type": "Double_t", "is_array": false, "variable": "th"},
+    { "name": "H.gtr.ph", "type": "Double_t", "is_array": false, "variable": "ph"},
+    { "name": "H.gtr.px", "type": "Double_t", "is_array": false, "variable": "px"},
+    { "name": "H.gtr.py", "type": "Double_t", "is_array": false, "variable": "py"},
+    { "name": "H.gtr.pz", "type": "Double_t", "is_array": false, "variable": "pz"},
+    { "name": "H.cer.npeSum", "type": "Double_t", "is_array": false, "variable": "cernpe"},
+    { "name": "H.cal.etottracknorm", "type": "Double_t", "is_array": false, "variable": "caltracknorm"}
   ]
 }
