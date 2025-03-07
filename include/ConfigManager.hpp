@@ -33,6 +33,8 @@ public:
      */
     int GetInt(const std::string& key);
     double GetDouble(const std::string& key);
+    std::string GetString(const std::string& key);
+    std::vector<int> GetSegments();
     /**
      * @brief Resolves a file path using predefined patterns.
      * @param key The name of the file type.
