@@ -17,7 +17,26 @@ double ConfigManager::GetDouble(const std::string& key) {
 }
 
 std::string ConfigManager::GetString(const std::string& key) {
-    return config.contains(key) ? config[key].get<std::string>() : "";
+    std::vector<std::string> keys;
+    std::stringstream ss(key);
+    std::string segment;
+    
+    // Split key by '.' to handle nested access
+    while (std::getline(ss, segment, '.')) {
+        keys.push_back(segment);
+    }
+
+    json* temp = &config;
+    for (const auto& k : keys) {
+        if (temp->contains(k)) {
+            temp = &(*temp)[k];
+        } else {
+            std::cerr << "Error: Key not found in JSON: " << key << std::endl;
+            return "";
+        }
+    }
+
+    return temp->is_string() ? temp->get<std::string>() : "";
 }
 
 std::vector<int> ConfigManager::GetSegments() {
@@ -59,14 +78,30 @@ std::string ConfigManager::GetFilePath(const std::string& key, int run, int segm
 }
 
 std::string ConfigManager::GetWaveformFile(int run, int block_number) {
-    for (const auto& wf : config["waveform_files"]) {
+    std::string matchedPath = "";
+    int matchCount = 0;
+
+    for (const auto& wf : config["waveform_files"]["patterns"]) {
         int minRun = wf["range"][0].get<int>();
         int maxRun = wf["range"][1].get<int>();
+
         if (run >= minRun && run <= maxRun) {
-            return ResolvePath(wf["path"], block_number);
+            if (matchCount > 0) {
+                std::cerr << "Error: Multiple waveform files found for run " << run << ". Configuration issue!" << std::endl;
+                return "";
+            }
+            matchedPath = Form(wf["path"].get<std::string>().c_str(), block_number);
+            matchCount++;
         }
     }
-    return "";
+
+    if (matchedPath.empty()) {
+        // No match found, use default
+        //std::cout << "Warning: No waveform file found for run " << run << ". Using default pattern." << std::endl;
+        matchedPath = Form(config["waveform_files"]["default_pattern"].get<std::string>().c_str(), block_number);
+    }
+    std::cout << matchedPath << std::endl;
+    return matchedPath;
 }
 
 std::vector<std::string> ConfigManager::GetBranchNames() {

@@ -1,8 +1,8 @@
 #include "ReferenceManager.hpp"
 
-ReferenceManager::ReferenceManager(ConfigManager& configManager)
-    : config(configManager) {
-    run = config.GetInt("run");
+ReferenceManager::ReferenceManager(int run, ConfigManager& configManager)
+    : run(run), config(configManager) {
+    //run = config.GetInt("run");
     nblocks = config.GetInt("nblocks");
     ntime = config.GetInt("ntime");
 }
@@ -31,8 +31,9 @@ bool ReferenceManager::ValidateWaveformFile(const std::string& filePath) {
 
 bool ReferenceManager::LoadReferenceWaveforms() {
     std::cout << "Loading reference waveforms for run: " << run << std::endl;
-
+    //std::cout << nblocks << std::endl;
     for (int i = 0; i < nblocks; i++) {
+        //std::cout << "Loading reference waveforms for block: " << i << std::endl;
         std::string filePath = config.GetWaveformFile(run, i);
 
         if (!ValidateWaveformFile(filePath)) {

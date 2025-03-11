@@ -1,7 +1,11 @@
+# Executable
+RootWaveformAnalysis
+
 # Ignore data directory
 /data/
 /replays/
 /output/
+/reference_waveforms/
 
 # Ignore build directories
 /build/

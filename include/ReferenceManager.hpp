@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 
 class ReferenceManager {
 public:
-    explicit ReferenceManager(ConfigManager& configManager);
+    explicit ReferenceManager(int run, ConfigManager& configManager);
     
     bool LoadReferenceWaveforms();  // Loads all reference waveforms at initialization
     bool ValidateWaveformFile(const std::string& filePath);  // File format check

@@ -17,7 +17,8 @@ int main() {
     TFile* outputFile = fileManager.CreateOutputFile(run, 0);
 
     //BranchManager branchManager(tree, config);
-    ReferenceManager refManager(config);
+    ReferenceManager refManager(run, config);
+    refManager.LoadReferenceWaveforms();
 
     //branchManager.PrintLoadedBranches();
 

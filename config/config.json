@@ -15,6 +15,7 @@
 
   "global": {
     "nchannel": 16, 
+    "nblocks": 1080,
     "ncol": 30, 
     "nlin": 36, 
     "maxpulses": 4, 
@@ -44,7 +45,7 @@
       { "range": [6000, 7500], "path": "tdc_offsets/tdc_6000-7500.txt" },
       { "range": [5183, 5208], "path": "tdc_offsets/tdc_5183-5208.txt" }
     ],
-    "default": "tdc_offsets/default_tdc.txt"
+    "default_pattern": "tdc_offsets/default_tdc.txt"
   },
 
   "waveform_files": {
