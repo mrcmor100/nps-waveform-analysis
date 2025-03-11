@@ -1,12 +1,12 @@
 {
   "processing_settings": {
     "num_cores": 8,
-    "segments": [0, 1, 2, 3]
+    "segments": [0, 1, 2, 5]
   },
   "io_settings": {
     "base_path": "./",
     "input_subdir": "replays/",
-    "output_subdir": "replays/",
+    "output_subdir": "output/",
     "input_rootfile": "nps_hms_coin_%d_%d_1_-1.root",
     "input_tree": "T",
     "output_tree": "TOUT",

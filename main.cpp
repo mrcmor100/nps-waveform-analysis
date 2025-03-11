@@ -10,15 +10,16 @@ int main() {
     int run = 5200;
     int block = 10;
     ConfigManager config("config/config.json");
-
+    std::cout << config.GetInt("ncol") << std::endl;
+    std::cout << config.GetDouble("ADCtomV") << std::endl;
     FileManager fileManager(config);
     TChain* tree = fileManager.LoadTChain(run);
     TFile* outputFile = fileManager.CreateOutputFile(run, 0);
 
-    BranchManager branchManager(tree, config);
+    //BranchManager branchManager(tree, config);
     ReferenceManager refManager(config);
 
-    branchManager.PrintLoadedBranches();
+    //branchManager.PrintLoadedBranches();
 
     auto* interpolator = refManager.GetInterpolator(block);
     if (interpolator) {

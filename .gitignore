@@ -1,5 +1,7 @@
 # Ignore data directory
 /data/
+/replays/
+/output/
 
 # Ignore build directories
 /build/

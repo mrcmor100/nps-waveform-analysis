@@ -29,6 +29,7 @@ TChain* FileManager::LoadTChain(int run) {
     TChain* tree = new TChain(config.GetString("io_settings.input_tree").c_str());
     for (int segment : GetSegments()) {
         std::string filename = GetInputFilePath(run, segment);
+        std::cout << filename << std::endl;
         TFile* file = TFile::Open(filename.c_str());
 
         if (file && !file->IsZombie()) {
