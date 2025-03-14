@@ -27,7 +27,8 @@
     "dt": 4.0, 
     "nslots": 1104, 
     "ADCtomV": 0.244140625, 
-    "integtopC": 0.020
+    "integtopC": 0.020,
+    "timerefacc": 0.0
   }, 
 
   "run_parameters": [

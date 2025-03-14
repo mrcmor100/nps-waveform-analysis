@@ -1,31 +1,33 @@
-#pragma once
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <filesystem>
-#include <unordered_map>
-#include <Math/Interpolator.h>
-#include <TF1.h>
-#include "ConfigManager.hpp"
+#ifndef REFERENCE_MANAGER_HPP
+#define REFERENCE_MANAGER_HPP
 
-namespace fs = std::filesystem;
+#include "ManagerConfigs.hpp"
+#include <memory>
+#include <map>
+#include <string>
+#include <fstream>
+#include <iostream>
+#include "TF1.h"
+#include "Math/Interpolator.h"
 
 class ReferenceManager {
 public:
-    explicit ReferenceManager(int run, ConfigManager& configManager);
-    
-    bool LoadReferenceWaveforms();  // Loads all reference waveforms at initialization
-    bool ValidateWaveformFile(const std::string& filePath);  // File format check
+    // Now the constructor takes the run number and a ReferenceConfig (and/or GlobalConfig if needed).
+    ReferenceManager(int run, const GlobalConfig& globalCfg, const ReferenceConfig& refCfg);
+
+    bool LoadReferenceWaveforms();
     const ROOT::Math::Interpolator* GetInterpolator(int block) const;
     TF1* GetFitter(int block) const;
-
 private:
-    ConfigManager& config;
     int run;
     int nblocks;
     int ntime;
-    int maxwfpulses;
-    std::unordered_map<int, std::unique_ptr<ROOT::Math::Interpolator>> interpolators;
-    std::unordered_map<int, std::unique_ptr<TF1>> fitters;
+    int timerefacc;
+    const ReferenceConfig& refConfig;
+
+    // Maps to store interpolators and fitters.
+    std::map<int, std::unique_ptr<ROOT::Math::Interpolator>> interpolators;
+    std::map<int, std::unique_ptr<TF1>> fitters;
 };
+
+#endif // REFERENCE_MANAGER_HPP
