@@ -1,7 +1,7 @@
 {
   "processing_settings": {
-    "num_cores": 8,
-    "segments": [0, 1, 2, 5]
+    "waveform_analysis_version": "1.0.0",
+    "num_cores": 8
   },
   "io_settings": {
     "base_path": "./",
@@ -9,6 +9,7 @@
     "output_subdir": "output/",
     "input_rootfile": "nps_hms_coin_%d_%d_1_-1.root",
     "input_tree": "T",
+    "input_segments": [0, 1, 2, 5],
     "output_tree": "TOUT",
     "output_rootfile": "nps_hms_coin_%d_%d_1_-1_out.root"
   },
@@ -96,5 +97,12 @@
     { "name": "H.gtr.pz", "type": "Double_t", "is_array": false, "variable": "pz"}, 
     { "name": "H.cer.npeSum", "type": "Double_t", "is_array": false, "variable": "cernpe"}, 
     { "name": "H.cal.etottracknorm", "type": "Double_t", "is_array": false, "variable": "caltracknorm"}
+  ],
+  "cuts": [
+    {"name": "theta", "variable": "th", "value": "internal_var > th", "section": 1},
+    {"name": "phi", "variable": "ph", "section": 1},
+    {"name": "delta", "variable": "dp", "section": 1},
+    {"name": "HMS_corr_time", "variable": "", "section": 2},
+    {"name": "Samptime", "variable": "", "section": 2}
   ]
 }
