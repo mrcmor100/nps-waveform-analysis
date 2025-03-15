@@ -1,6 +1,20 @@
 #include "ConfigManager.hpp"
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
 
-ConfigManager::ConfigManager(const std::string& configPath) {
+ConfigManager::ConfigManager(const std::string& configPath, int run)
+    : currentRun(run)
+{
+    LoadConfig(configPath);
+    LoadGlobalConfig();
+    LoadBranchConfig();
+    LoadFileIOConfig();
+    LoadReferenceConfig();
+    ApplyRunOverrides();
+}
+
+void ConfigManager::LoadConfig(const std::string& configPath) {
     std::ifstream file(configPath);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open config file: " + configPath);
@@ -8,114 +22,117 @@ ConfigManager::ConfigManager(const std::string& configPath) {
     file >> config;
 }
 
-int ConfigManager::GetInt(const std::string& key) {
-    return config["global"].contains(key) ? config["global"][key].get<int>() : -1;
-}
-
-double ConfigManager::GetDouble(const std::string& key) {
-    return config["global"].contains(key) ? config["global"][key].get<double>() : -1.0;
-}
-
-std::string ConfigManager::GetString(const std::string& key) {
-    std::vector<std::string> keys;
-    std::stringstream ss(key);
-    std::string segment;
-    
-    // Split key by '.' to handle nested access
-    while (std::getline(ss, segment, '.')) {
-        keys.push_back(segment);
+void ConfigManager::LoadGlobalConfig() {
+    try {
+        auto& g = config.at("global");
+        globalConfig.nchannel   = g.at("nchannel").get<int>();
+        globalConfig.nblocks    = g.at("nblocks").get<int>();
+        globalConfig.ncol       = g.at("ncol").get<int>();
+        globalConfig.nlin       = g.at("nlin").get<int>();
+        globalConfig.maxpulses  = g.at("maxpulses").get<int>();
+        globalConfig.maxwfpulses= g.at("maxwfpulses").get<int>();
+        globalConfig.ntemp      = g.at("ntemp").get<int>();
+        globalConfig.ntime      = g.at("ntime").get<int>();
+        globalConfig.nfADC      = g.at("nfADC").get<int>();
+        globalConfig.dt         = g.at("dt").get<double>();
+        globalConfig.nslots     = g.at("nslots").get<int>();
+        globalConfig.ADCtomV    = g.at("ADCtomV").get<double>();
+        globalConfig.integtopC  = g.at("integtopC").get<double>();
+        globalConfig.timerefacc = g.at("timerefacc").get<double>();
+    } catch (const std::exception &e) {
+        throw std::runtime_error("Error loading global configuration: " + std::string(e.what()));
     }
+}
 
-    json* temp = &config;
-    for (const auto& k : keys) {
-        if (temp->contains(k)) {
-            temp = &(*temp)[k];
-        } else {
-            std::cerr << "Error: Key not found in JSON: " << key << std::endl;
-            return "";
+void ConfigManager::LoadBranchConfig() {
+    try {
+        for (const auto& branch : config.at("branches")) {
+            branchConfig.branchNames.push_back(branch.at("name").get<std::string>());
+            branchConfig.branchVarMap[branch.at("name").get<std::string>()] = branch.at("variable").get<std::string>();
         }
+    } catch (const std::exception &e) {
+        std::cerr << "Error loading branch configuration: " << e.what() << std::endl;
     }
-
-    return temp->is_string() ? temp->get<std::string>() : "";
 }
 
-std::vector<int> ConfigManager::GetSegments() {
-    json segmentsConfig = config["processing_settings"]["segments"];
-
-    std::vector<int> segments;
-
-    if (segmentsConfig.is_string() && segmentsConfig.get<std::string>() == "all") {
-        for (int i = 0; i < 10; i++) {  // Adjust max segment count
-            segments.push_back(i);
-        }
-    } else if (segmentsConfig.is_number()) {
-        segments.push_back(segmentsConfig.get<int>());
-    } else if (segmentsConfig.is_array()) {
-        segments = segmentsConfig.get<std::vector<int>>();
-    } else if (segmentsConfig.is_object() && segmentsConfig.contains("range")) {
-        int start = segmentsConfig["range"][0];
-        int end = segmentsConfig["range"][1];
-        for (int i = start; i <= end; i++) {
-            segments.push_back(i);
-        }
-    } else {
-        std::cerr << "Error: Invalid segments configuration in JSON." << std::endl;
+void ConfigManager::LoadFileIOConfig() {
+    try {
+        auto& io = config.at("io_settings");
+        fileIOConfig.basePath      = io.at("base_path").get<std::string>();
+        fileIOConfig.inputSubdir   = io.at("input_subdir").get<std::string>();
+        fileIOConfig.outputSubdir  = io.at("output_subdir").get<std::string>();
+        fileIOConfig.inputPattern  = io.at("input_rootfile").get<std::string>();
+        fileIOConfig.outputPattern = io.at("output_rootfile").get<std::string>();
+        fileIOConfig.inputTree     = io.at("input_tree").get<std::string>();
+    } catch (const std::exception &e) {
+        std::cerr << "Error loading file I/O configuration: " << e.what() << std::endl;
     }
-
-    return segments;
 }
 
-std::string ConfigManager::ResolvePath(const std::string& pattern, int value1, int value2) {
-    std::string base_path = config["project_settings"]["base_path"].get<std::string>();
-    std::string fullPath = base_path + pattern;
-    if (value1 >= 0 && value2 >= 0) return Form(fullPath.c_str(), value1, value2);
-    else if (value1 >= 0) return Form(fullPath.c_str(), value1);
-    return fullPath;
+void ConfigManager::LoadReferenceConfig() {
+    try {
+        // Load waveform file patterns.
+        auto& wfFiles = config.at("waveform_files");
+        for (const auto& pat : wfFiles.at("patterns")) {
+            FilePattern fp;
+            fp.rangeStart = pat.at("range")[0].get<int>();
+            fp.rangeEnd   = pat.at("range")[1].get<int>();
+            fp.path       = pat.at("path").get<std::string>();
+            referenceConfig.waveformPatterns.push_back(fp);
+        }
+        referenceConfig.waveformDefault = wfFiles.at("default_pattern").get<std::string>();
+
+        // Load tdc file patterns.
+        auto& tdcFiles = config.at("tdc_files");
+        for (const auto& pat : tdcFiles.at("patterns")) {
+            FilePattern fp;
+            fp.rangeStart = pat.at("range")[0].get<int>();
+            fp.rangeEnd   = pat.at("range")[1].get<int>();
+            fp.path       = pat.at("path").get<std::string>();
+            referenceConfig.tdcPatterns.push_back(fp);
+        }
+        referenceConfig.tdcDefault = tdcFiles.at("default_pattern").get<std::string>();
+    } catch (const std::exception &e) {
+        std::cerr << "Error loading reference configuration: " << e.what() << std::endl;
+    }
 }
 
-std::string ConfigManager::GetFilePath(const std::string& key, int run, int segment) {
-    return ResolvePath(config["filename_patterns"][key].get<std::string>(), run, segment);
-}
-
-std::string ConfigManager::GetWaveformFile(int run, int block_number) {
-    std::string matchedPath = "";
-    int matchCount = 0;
-
-    for (const auto& wf : config["waveform_files"]["patterns"]) {
-        int minRun = wf["range"][0].get<int>();
-        int maxRun = wf["range"][1].get<int>();
-
-        if (run >= minRun && run <= maxRun) {
-            if (matchCount > 0) {
-                std::cerr << "Error: Multiple waveform files found for run " << run << ". Configuration issue!" << std::endl;
-                return "";
+void ConfigManager::ApplyRunOverrides() {
+    // run_parameters is an array of override objects.
+    if (config.contains("run_parameters")) {
+        for (const auto& overrideObj : config.at("run_parameters")) {
+            // Ensure a "range" field exists.
+            if (!overrideObj.contains("range") || !overrideObj.at("range").is_array()) {
+                std::cerr << "Skipping invalid run_parameters override entry." << std::endl;
+                continue;
             }
-            matchedPath = Form(wf["path"].get<std::string>().c_str(), block_number);
-            matchCount++;
+            int low = overrideObj.at("range")[0].get<int>();
+            int high = overrideObj.at("range")[1].get<int>();
+            if (currentRun < low || currentRun > high) {
+                continue; // This override does not apply to the current run.
+            }
+            // For each key in the override (other than "range"), check if it belongs to global or reference.
+            for (auto it = overrideObj.begin(); it != overrideObj.end(); ++it) {
+                std::string key = it.key();
+                if (key == "range")
+                    continue;
+                // If the key exists in global, override it.
+                if (globalConfig.nblocks && key == "nblocks") {
+                    globalConfig.nblocks = it.value().get<int>();
+                }
+                if (globalConfig.ntime && key == "ntime") {
+                    globalConfig.ntime = it.value().get<int>();
+                }
+                if (globalConfig.ncol && key == "ncol") {
+                    globalConfig.ncol = it.value().get<int>();
+                }
+                // If not in global, check if it belongs to ReferenceConfig.
+                if (key == "timerefacc") {
+                    globalConfig.timerefacc = it.value().get<int>();
+                    std::cout << "Overriding timerefacc for run: " << currentRun << '\n';
+                }
+                // Add further keys as needed.
+            }
         }
     }
-
-    if (matchedPath.empty()) {
-        // No match found, use default
-        //std::cout << "Warning: No waveform file found for run " << run << ". Using default pattern." << std::endl;
-        matchedPath = Form(config["waveform_files"]["default_pattern"].get<std::string>().c_str(), block_number);
-    }
-    std::cout << matchedPath << std::endl;
-    return matchedPath;
-}
-
-std::vector<std::string> ConfigManager::GetBranchNames() {
-    std::vector<std::string> branchNames;
-    for (const auto& branch : config["branches"]) {
-        branchNames.push_back(branch["name"].get<std::string>());
-    }
-    return branchNames;
-}
-
-std::unordered_map<std::string, std::string> ConfigManager::GetBranchVariableMap() {
-    std::unordered_map<std::string, std::string> branchVarMap;
-    for (const auto& branch : config["branches"]) {
-        branchVarMap[branch["name"].get<std::string>()] = branch["variable"].get<std::string>();
-    }
-    return branchVarMap;
 }

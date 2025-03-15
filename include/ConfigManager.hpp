@@ -1,52 +1,42 @@
-/**
- * @file ConfigManager.hpp
- * @brief Handles configuration loading from JSON.
- */
+#ifndef CONFIG_MANAGER_HPP
+#define CONFIG_MANAGER_HPP
 
- #pragma once
-#include <iostream>
-#include <fstream>
-#include <unordered_map>
-#include <vector>
+#include "ManagerConfigs.hpp"
 #include <nlohmann/json.hpp>
-
-#include "TString.h"
+#include <string>
 
 using json = nlohmann::json;
 
-/**
- * @class ConfigManager
- * @brief Manages project configuration using JSON.
- */
 class ConfigManager {
 public:
-    /**
-     * @brief Loads configuration from a JSON file.
-     * @param configPath Path to the JSON file.
-     */
-    explicit ConfigManager(const std::string& configPath);
-    
-    /**
-     * @brief Retrieves an integer parameter from global settings.
-     * @param key The name of the parameter.
-     * @return The integer value.
-     */
-    int GetInt(const std::string& key);
-    double GetDouble(const std::string& key);
-    std::string GetString(const std::string& key);
-    std::vector<int> GetSegments();
-    /**
-     * @brief Resolves a file path using predefined patterns.
-     * @param key The name of the file type.
-     * @param run Optional run number.
-     * @return The resolved file path.
-     */
-    std::string GetFilePath(const std::string& key, int run = -1, int segment = -1);
-    std::vector<std::string> GetBranchNames();
-    std::unordered_map<std::string, std::string> GetBranchVariableMap();
-    std::string GetWaveformFile(int run, int block_number);
+    // The constructor now takes both the path and the run number.
+    ConfigManager(const std::string& configPath, int run);
 
+    // Getters for our configuration structs.
+    const GlobalConfig& GetGlobalConfig() const { return globalConfig; }
+    const BranchConfig& GetBranchConfig() const { return branchConfig; }
+    const FileIOConfig& GetFileIOConfig() const { return fileIOConfig; }
+    const ReferenceConfig& GetReferenceConfig() const { return referenceConfig; }
+
+    // (Other helper functions from before can be kept if still needed.)
 private:
+    // Load JSON file.
+    void LoadConfig(const std::string& configPath);
+    // Load sections into our structs.
+    void LoadGlobalConfig();
+    void LoadBranchConfig();
+    void LoadFileIOConfig();
+    void LoadReferenceConfig();
+    // Apply run-specific overrides (using run_parameters).
+    void ApplyRunOverrides();
+
     json config;
-    std::string ResolvePath(const std::string& pattern, int value1 = -1, int value2 = -1);
+    int currentRun;
+
+    GlobalConfig globalConfig;
+    BranchConfig branchConfig;
+    FileIOConfig fileIOConfig;
+    ReferenceConfig referenceConfig;
 };
+
+#endif // CONFIG_MANAGER_HPP

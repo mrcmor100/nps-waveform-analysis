@@ -1,19 +1,24 @@
-#pragma once
-#include <iostream>
-#include <unordered_map>
-#include <vector>
+#ifndef BRANCH_MANAGER_HPP
+#define BRANCH_MANAGER_HPP
+
+#include "ManagerConfigs.hpp"
 #include <TTree.h>
-#include "ConfigManager.hpp"
+#include <unordered_map>
+#include <string>
+#include <iostream>
 
 class BranchManager {
 public:
-    BranchManager(TTree* tree, ConfigManager& configManager);
-    void DefineBranches();
-    void PrintLoadedBranches();
-    
+    // Now accepts a BranchConfig struct.
+    BranchManager(TTree* tree, const BranchConfig& branchCfg);
+    ~BranchManager();
+    void PrintLoadedBranches() const;
 private:
     TTree* tree;
-    std::unordered_map<std::string, void*> allocatedMemory;
-    std::unordered_map<std::string, int> intVariables;
+    // Map to hold allocated memory for each branch.
+    std::unordered_map<std::string, double*> allocatedMemory;
+    // Map to store the variable names associated with each branch.
     std::unordered_map<std::string, double> namedVariables;
 };
+
+#endif // BRANCH_MANAGER_HPP
