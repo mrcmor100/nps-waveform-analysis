@@ -6,6 +6,7 @@
 #include "BranchManager.hpp"
 #include "GlobalManager.hpp"
 #include "ReferenceManager.hpp"
+#include "DataAnalysisManager.hpp"
 
 // Display usage instructions.
 void printUsage(const char* exeName) {
@@ -45,12 +46,13 @@ int main(int argc, char* argv[]) {
 
         // Create and use managers.
         FileManager fileManager(fileCfg);
-        TChain* tree = fileManager.LoadTChain(run);
+        TChain* chain = fileManager.LoadTChain(run);
         TFile* outputFile = fileManager.CreateOutputFile(run, 0);
 
-        BranchManager branchManager(tree, branchCfg);
+        BranchManager branchManager(chain, branchCfg);
         GlobalManager globalManager(globalCfg);
         ReferenceManager refManager(run, globalCfg, refCfg);
+        DataAnalysisManager analysisManager(chain, fileCfg, run);
 
         // Example output.
         std::cout << "Global nblocks: " << globalManager.GetNblocks() << "\n";
@@ -61,6 +63,9 @@ int main(int argc, char* argv[]) {
             std::cerr << "Failed to load reference waveforms.\n";
         }
 
+        // Process data with RDataFrame:
+        analysisManager.ProcessData();
+        
         // Example: Retrieve an interpolator for a specific block.
         int block = 10;
         auto* interpolator = refManager.GetInterpolator(block);
@@ -71,7 +76,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Cleanup.
-        delete tree;
+        delete chain;
     } catch (const std::exception& e) {
         std::cerr << "Error encountered: " << e.what() << "\n";
         return 1;

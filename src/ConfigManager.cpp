@@ -64,6 +64,7 @@ void ConfigManager::LoadFileIOConfig() {
         fileIOConfig.inputPattern  = io.at("input_rootfile").get<std::string>();
         fileIOConfig.outputPattern = io.at("output_rootfile").get<std::string>();
         fileIOConfig.inputTree     = io.at("input_tree").get<std::string>();
+        fileIOConfig.outputTree     = io.at("output_tree").get<std::string>();
     } catch (const std::exception &e) {
         std::cerr << "Error loading file I/O configuration: " << e.what() << std::endl;
     }

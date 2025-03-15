@@ -28,7 +28,7 @@ endif()
 
 # --- Project Source Files ---
 add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchManager.cpp 
-  src/ReferenceManager.cpp src/FileManager.cpp src/GlobalManager.cpp)
+  src/ReferenceManager.cpp src/FileManager.cpp src/GlobalManager.cpp src/DataAnalysisManager.cpp)
 
 # --- Include Directories ---
 target_include_directories(RootWaveformAnalysis PRIVATE ${ROOT_INCLUDE_DIRS} include)

@@ -30,7 +30,7 @@ std::string FileManager::GetOutputFilePath(int run, int segment) {
 TChain* FileManager::LoadTChain(int run) {
     TChain* chain = new TChain(fileConfig.inputTree.c_str());
     // Here we assume a default list of segments.
-    std::vector<int> segments = {0, 1, 2, 5};
+    std::vector<int> segments = {0, 3};
     for (int seg : segments) {
         std::string filename = GetInputFilePath(run, seg);
         std::cout << "Loading file: " << filename << std::endl;
