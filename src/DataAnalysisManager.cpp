@@ -10,11 +10,12 @@ DataAnalysisManager::DataAnalysisManager(TChain* chain, const FileIOConfig& file
 }
 
 void DataAnalysisManager::ProcessData() {
-    // Create an RDataFrame from the chain. Assume the tree name is provided in fileConfig.inputTree.
+    ROOT::EnableImplicitMT(15);
+    // Create the initial RDataFrame from the TChain.
     ROOT::RDataFrame df(*chain);
 
-    // Filter the events using inline lambda. 
-    // Note: We assume branches "H.gtr.th", "H.gtr.ph", and "H.gtr.dp" are available.
+    // Step 1: Filter events based on tracking cuts.
+    // This lambda filters out events with H.gtr.th, H.gtr.ph, and H.gtr.dp
     auto dfFiltered = df.Filter(
         [](double th, double ph, double dp) {
             return TMath::Abs(th) < 0.08 && TMath::Abs(ph) < 0.04 && TMath::Abs(dp) < 10;
@@ -22,41 +23,129 @@ void DataAnalysisManager::ProcessData() {
         {"H.gtr.th", "H.gtr.ph", "H.gtr.dp"}
     );
 
-    // Now, process the "SampWaveForm" branch.
-    // For demonstration, assume "SampWaveForm" is stored as a std::vector<double>.
-    // We will flatten this by, for example, taking the first element from each block.
-    // (In a full implementation, you might loop in blocks or build a structure.)
-    auto dfProcessed = dfFiltered.Define("waveform_block_data",
-        [](const ROOT::RVec<double>& waveform, int nsamp) -> std::vector<double> {
-            std::vector<double> flat_data;
-            constexpr int BLOCK_SIZE = 112;
-    
-            for (int i = 0; i < nsamp; i += BLOCK_SIZE) {
-                int end = std::min(i + BLOCK_SIZE, nsamp);
-                for (int j = i; j < end; j++) {
-                    flat_data.push_back(waveform[j]); // Flatten block data
-                }
+    // Step 2: Convert the raw waveform data from double to float.
+    // We define a new branch "waveform_block_data" that converts the raw data.
+    auto dfWaveform = dfFiltered.Define("waveform_block_data",
+        [](const ROOT::RVec<double>& waveform, int nsamp) -> std::vector<float> {
+            std::vector<float> flat_data;
+            flat_data.resize(nsamp);  // Preallocate exactly nsamp entries.
+            for (size_t i = 0; i < waveform.size(); ++i) {
+                flat_data[i] = static_cast<float>(waveform[i]);
             }
-    
             return flat_data;
         },
         {"NPS.cal.fly.adcSampWaveform", "Ndata.NPS.cal.fly.adcSampWaveform"}
     );
-    
-    
 
-    // Specify the branches that should be written to the output file.
+    // Step 3: Flatten waveforms into block data.
+    // Here you could, for example, take the flattened data and repackage it
+    // into a vector of your DataBlockFloat structures (if desired).
+    auto dfFlattened = dfWaveform.Define("blocks_float",
+        [](const ROOT::RVec<double>& flat_data, int nsamp) {
+            // flat_data is assumed to have groups of DataBlockSize (112) doubles per block.
+            int nBlocks = flat_data.size() / DataBlockSize;
+            std::vector<DataBlockFloat> blocks;
+            blocks.reserve(nBlocks);
+            for (int i = 0; i < nBlocks; ++i) {
+                size_t offset = i * DataBlockSize;
+                // First element: block id.
+                float block_id = static_cast<float>(flat_data[offset]);
+                // Second element: number of samples; must equal NumSamples (110)
+                float n_samples = static_cast<float>(flat_data[offset + 1]);
+                // Create a temporary array for the actual waveform data.
+                std::array<float, NumSamples> converted{};
+                for (size_t j = 0; j < NumSamples; ++j) {
+                    converted[j] = static_cast<float>(flat_data[offset + 2 + j]);
+                }
+                // Construct a DataBlockFloat using our temporary converted array.
+                blocks.push_back(DataBlockFloat(block_id, n_samples, converted.data()));
+            }
+            return blocks;
+        },
+        {"NPS.cal.fly.adcSampWaveform", "Ndata.NPS.cal.fly.adcSampWaveform"}
+    );
+
+    // Step 4: Process ADC counters.
+    // Here you would encapsulate the ADC logic (like computing HMS time corrections,
+    // updating pulse counts, and selecting pulse parameters) into a lambda.
+    // auto dfAdc = dfFlattened.Define("adc_results",
+    //     [](int NadcCounter,
+    //        const ROOT::RVec<int>& adcCounter,
+    //        const ROOT::RVec<double>& adcSampPulseTime,
+    //        const ROOT::RVec<double>& adcSampPulseTimeRaw,
+    //        const ROOT::RVec<double>& tdcoffset,
+    //        const ROOT::RVec<double>& adcSampPulseAmp,
+    //        const ROOT::RVec<double>& adcSampPulseInt,
+    //        const ROOT::RVec<double>& adcSampPulsePed,
+    //        const ROOT::RVec<double>& timemean2,
+    //        int nblocks) -> std::vector<AdcResult> 
+    //     {
+    //         std::vector<AdcResult> results(nblocks);
+    //         double corr_time_HMS = 0.0;
+    //         for (int i = 0; i < NadcCounter; ++i) {
+    //             int block = adcCounter[i];
+    //             if (block < 0 || block >= nblocks)
+    //                 continue; // skip invalid pulses
+
+    //             if (i == 0) {
+    //                 corr_time_HMS = adcSampPulseTime[i] - (adcSampPulseTimeRaw[i] / 16.0) - tdcoffset[block];
+    //             } else {
+    //                 double expected = adcSampPulseTime[i] - (adcSampPulseTimeRaw[i] / 16.0) - tdcoffset[block];
+    //                 if (std::fabs(corr_time_HMS - expected) > 0.001) {
+    //                     // Optionally log a warning
+    //                 }
+    //             }
+    //             AdcResult &res = results[block];
+    //             res.Npulse += 1;
+    //             if (res.Npulse == 1) {
+    //                 res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
+    //                 res.Samptime = static_cast<float>(adcSampPulseTime[i]);
+    //                 res.Sampener = static_cast<float>(adcSampPulseInt[i]);
+    //                 res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
+    //             } else {
+    //                 if (std::fabs(res.Samptime - timemean2[block]) > std::fabs(adcSampPulseTime[i] - timemean2[block])) {
+    //                     res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
+    //                     res.Samptime = static_cast<float>(adcSampPulseTime[i]);
+    //                     res.Sampener = static_cast<float>(adcSampPulseInt[i]);
+    //                     res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
+    //                 }
+    //             }
+    //         }
+    //         return results;
+    //     },
+    //     {"Ndata.NPS.cal.fly.adcCounter",
+    //      "adcSampPulseTime",
+    //      "adcSampPulseTimeRaw",
+    //      "tdcoffset",
+    //      "adcSampPulseAmp",
+    //      "adcSampPulseInt",
+    //      "adcSampPulsePed",
+    //      "timemean2",
+    //      "nblocks"}
+    // );
+
+    // Step 5: Compute additional quantities (energies, noise, signal widths, etc.)
+    // Here, define another lambda that uses the previous branches.
+    // auto dfFinal = dfAdc.Define("additional_quantities", 
+    //     [](const ROOT::RVec<double>& waveform, int nsamp, /* other dependencies */) -> /* appropriate return type */ {
+    //         // Implement energy, noise, width calculations here.
+    //         // This example just returns nsamp for demonstration.
+    //         return nsamp;
+    //     },
+    //     {"NPS.cal.fly.adcSampWaveform", "nblocks"} // list all dependencies required
+    // );
+
+    // Define the final output branches.
     std::vector<std::string> outputBranches = {
         "H.gtr.th",
         "H.gtr.ph",
-        "H.gtr.dp"
+        "H.gtr.dp",
+        "blocks_float"
     };
 
-    // Determine the output file path.
     std::string outputPath = fileConfig.basePath + fileConfig.outputSubdir + "flattened_output.root";
     std::cout << "Writing flattened output to: " << outputPath << std::endl;
 
-    // Write the flattened tree to an output file.
-    // "FlattenedTree" is the name of the tree in the output file.
-    dfProcessed.Snapshot(fileConfig.outputTree, outputPath, outputBranches);
+    // Write the final TTree to disk. Note: Snapshot is the terminal action.
+    dfFlattened.Snapshot(fileConfig.outputTree, outputPath, outputBranches);
 }

@@ -26,6 +26,21 @@ if (NOT nlohmann_json_FOUND)
   FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
+# Add the Dictionary containing the definition of DataBlockFloat for streaming.
+set(DICT_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/DataBlockDict.cpp)
+
+add_custom_command(
+    OUTPUT ${DICT_OUTPUT}
+    COMMAND rootcling -f ${DICT_OUTPUT} -c ${CMAKE_CURRENT_SOURCE_DIR}/include/DataTypes.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/LinkDef.h
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/DataTypes.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/LinkDef.h
+    COMMENT "Generating ROOT dictionary for DataBlock"
+)
+
+# Add the dictionary source file to a library target.
+add_library(DataBlockDict SHARED ${DICT_OUTPUT})
+target_include_directories(DataBlockDict PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(DataBlockDict ${ROOT_LIBRARIES})
+
 # --- Project Source Files ---
 add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchManager.cpp 
   src/ReferenceManager.cpp src/FileManager.cpp src/GlobalManager.cpp src/DataAnalysisManager.cpp)
@@ -34,4 +49,4 @@ add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchMan
 target_include_directories(RootWaveformAnalysis PRIVATE ${ROOT_INCLUDE_DIRS} include)
 
 # --- Link Libraries ---
-target_link_libraries(RootWaveformAnalysis PRIVATE ${ROOT_LIBRARIES} nlohmann_json::nlohmann_json)
+target_link_libraries(RootWaveformAnalysis PRIVATE ${ROOT_LIBRARIES} DataBlockDict nlohmann_json::nlohmann_json)

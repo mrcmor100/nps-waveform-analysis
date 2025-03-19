@@ -5,6 +5,10 @@
 #include "TChain.h"
 #include "ManagerConfigs.hpp"
 #include "FileManager.hpp"
+#include "DataTypes.hpp"
+#include <ROOT/RDataFrame.hxx>
+
+using RDataFrame_t = ROOT::RDataFrame;
 
 class DataAnalysisManager {
 public:

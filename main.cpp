@@ -75,6 +75,8 @@ int main(int argc, char* argv[]) {
             std::cout << "Interpolator not available for block " << block << "\n";
         }
 
+        outputFile->Write();
+        outputFile->Close();    
         // Cleanup.
         delete chain;
     } catch (const std::exception& e) {
