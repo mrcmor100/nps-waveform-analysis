@@ -25,13 +25,12 @@ void DataAnalysisManager::ProcessData() {
 
     // Step 2: Convert the raw waveform data from double to float.
     // We define a new branch "waveform_block_data" that converts the raw data.
-    auto dfWaveform = dfFiltered.Define("waveform_block_data",
+    auto dfWaveform = dfFiltered.Define("waveform_block_data_float",
         [](const ROOT::RVec<double>& waveform, int nsamp) -> std::vector<float> {
             std::vector<float> flat_data;
-            flat_data.resize(nsamp);  // Preallocate exactly nsamp entries.
-            for (size_t i = 0; i < waveform.size(); ++i) {
-                flat_data[i] = static_cast<float>(waveform[i]);
-            }
+            flat_data.reserve(nsamp);  // Avoid zero initialization
+            std::transform(waveform.begin(), waveform.end(), std::back_inserter(flat_data),
+                           [](double x) { return static_cast<float>(x); });
             return flat_data;
         },
         {"NPS.cal.fly.adcSampWaveform", "Ndata.NPS.cal.fly.adcSampWaveform"}
@@ -41,28 +40,22 @@ void DataAnalysisManager::ProcessData() {
     // Here you could, for example, take the flattened data and repackage it
     // into a vector of your DataBlockFloat structures (if desired).
     auto dfFlattened = dfWaveform.Define("blocks_float",
-        [](const ROOT::RVec<double>& flat_data, int nsamp) {
-            // flat_data is assumed to have groups of DataBlockSize (112) doubles per block.
+        [](const std::vector<float>& flat_data, int /*nsamp*/) -> std::vector<DataBlockFloat> {
             int nBlocks = flat_data.size() / DataBlockSize;
             std::vector<DataBlockFloat> blocks;
             blocks.reserve(nBlocks);
             for (int i = 0; i < nBlocks; ++i) {
                 size_t offset = i * DataBlockSize;
-                // First element: block id.
-                float block_id = static_cast<float>(flat_data[offset]);
-                // Second element: number of samples; must equal NumSamples (110)
-                float n_samples = static_cast<float>(flat_data[offset + 1]);
-                // Create a temporary array for the actual waveform data.
-                std::array<float, NumSamples> converted{};
-                for (size_t j = 0; j < NumSamples; ++j) {
-                    converted[j] = static_cast<float>(flat_data[offset + 2 + j]);
-                }
-                // Construct a DataBlockFloat using our temporary converted array.
-                blocks.push_back(DataBlockFloat(block_id, n_samples, converted.data()));
+                float block_id = flat_data[offset];
+                float n_samples = flat_data[offset + 1];  // Must be <= NumSamples
+                size_t num_to_copy = std::min<size_t>(n_samples, NumSamples); // Prevent out-of-bounds
+    
+                const float* waveform_ptr = &flat_data[offset + 2];  
+                blocks.emplace_back(block_id, n_samples, waveform_ptr, num_to_copy);
             }
             return blocks;
         },
-        {"NPS.cal.fly.adcSampWaveform", "Ndata.NPS.cal.fly.adcSampWaveform"}
+        {"waveform_block_data_float", "Ndata.NPS.cal.fly.adcSampWaveform"}
     );
 
     // Step 4: Process ADC counters.

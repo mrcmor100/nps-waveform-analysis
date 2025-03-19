@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include "TSystem.h"
 #include "ConfigManager.hpp"
 #include "FileManager.hpp"
 #include "BranchManager.hpp"
@@ -16,6 +17,7 @@ void printUsage(const char* exeName) {
 }
 
 int main(int argc, char* argv[]) {
+    gSystem->Load("libDataBlockDict.so");
     // Check if the required run parameter is provided.
     if (argc < 2) {
         printUsage(argv[0]);

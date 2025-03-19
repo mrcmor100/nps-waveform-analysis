@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <iostream>
 #include "Config.hpp"
 
 template <typename T, size_t N>
@@ -14,11 +15,14 @@ struct DataBlock {
             data[i] = T();
     }
 
-    DataBlock(T id, T samples, const T* input_data) : block_id(id), n_samples(samples) {
-        if (n_samples != N) {
-            throw std::invalid_argument("DataBlock constructed with incorrect n_samples");
+    DataBlock(T id, T samples, const T* input_data, size_t num_to_copy) : block_id(id), n_samples(samples) {
+        size_t safe_copy_size = std::min(num_to_copy, N);  // Prevent out-of-bounds
+        std::memcpy(data, input_data, safe_copy_size * sizeof(T));  
+        // Zero out the rest if necessary
+        if (safe_copy_size < N) {
+            std::cout << "Should Never be called!\n";
+            std::fill(data + safe_copy_size, data + N, T(0));
         }
-        std::memcpy(data, input_data, N * sizeof(T));  // Efficient copy
     }
 };
 using DataBlockFloat = DataBlock<float, NumSamples>;
