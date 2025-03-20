@@ -61,61 +61,61 @@ void DataAnalysisManager::ProcessData() {
     // Step 4: Process ADC counters.
     // Here you would encapsulate the ADC logic (like computing HMS time corrections,
     // updating pulse counts, and selecting pulse parameters) into a lambda.
-    // auto dfAdc = dfFlattened.Define("adc_results",
-    //     [](int NadcCounter,
-    //        const ROOT::RVec<int>& adcCounter,
-    //        const ROOT::RVec<double>& adcSampPulseTime,
-    //        const ROOT::RVec<double>& adcSampPulseTimeRaw,
-    //        const ROOT::RVec<double>& tdcoffset,
-    //        const ROOT::RVec<double>& adcSampPulseAmp,
-    //        const ROOT::RVec<double>& adcSampPulseInt,
-    //        const ROOT::RVec<double>& adcSampPulsePed,
-    //        const ROOT::RVec<double>& timemean2,
-    //        int nblocks) -> std::vector<AdcResult> 
-    //     {
-    //         std::vector<AdcResult> results(nblocks);
-    //         double corr_time_HMS = 0.0;
-    //         for (int i = 0; i < NadcCounter; ++i) {
-    //             int block = adcCounter[i];
-    //             if (block < 0 || block >= nblocks)
-    //                 continue; // skip invalid pulses
+    auto dfAdc = dfFlattened.Define("adc_results",
+        [](int NadcCounters,
+           const ROOT::RVec<double>& adcCounters,
+           const ROOT::RVec<double>& adcSampPulseTime,
+           const ROOT::RVec<double>& adcSampPulseTimeRaw,
+           const ROOT::RVec<double>& adcSampPulseAmp,
+           const ROOT::RVec<double>& adcSampPulseInt,
+           const ROOT::RVec<double>& adcSampPulsePed) -> std::vector<AdcResult> 
+        {
+            // TODO: Implement slot-by-slot tdcoffset and timemean2 (if needed)
+            Float_t tdcoffset = 0.; Float_t timemean2 = 150.;
+            Float_t adcSampleDivisions = 16.0;
+            Double_t corr_time_HMS = 0.0;
+            // Resize adcResults to known size to avoid allocations
+            std::vector<AdcResult> adcResults;
+            adcResults.resize(NadcCounters);
 
-    //             if (i == 0) {
-    //                 corr_time_HMS = adcSampPulseTime[i] - (adcSampPulseTimeRaw[i] / 16.0) - tdcoffset[block];
-    //             } else {
-    //                 double expected = adcSampPulseTime[i] - (adcSampPulseTimeRaw[i] / 16.0) - tdcoffset[block];
-    //                 if (std::fabs(corr_time_HMS - expected) > 0.001) {
-    //                     // Optionally log a warning
-    //                 }
-    //             }
-    //             AdcResult &res = results[block];
-    //             res.Npulse += 1;
-    //             if (res.Npulse == 1) {
-    //                 res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
-    //                 res.Samptime = static_cast<float>(adcSampPulseTime[i]);
-    //                 res.Sampener = static_cast<float>(adcSampPulseInt[i]);
-    //                 res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
-    //             } else {
-    //                 if (std::fabs(res.Samptime - timemean2[block]) > std::fabs(adcSampPulseTime[i] - timemean2[block])) {
-    //                     res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
-    //                     res.Samptime = static_cast<float>(adcSampPulseTime[i]);
-    //                     res.Sampener = static_cast<float>(adcSampPulseInt[i]);
-    //                     res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
-    //                 }
-    //             }
-    //         }
-    //         return results;
-    //     },
-    //     {"Ndata.NPS.cal.fly.adcCounter",
-    //      "adcSampPulseTime",
-    //      "adcSampPulseTimeRaw",
-    //      "tdcoffset",
-    //      "adcSampPulseAmp",
-    //      "adcSampPulseInt",
-    //      "adcSampPulsePed",
-    //      "timemean2",
-    //      "nblocks"}
-    // );
+            bool first = true;
+            for (int i=0; i < NadcCounters; ++i) {
+                if(first==true) {
+                    corr_time_HMS = adcSampPulseTime[i] - 
+                    (adcSampPulseTimeRaw[i] / adcSampleDivisions) - 
+                    tdcoffset;
+                }
+                first = false;
+                double expected = adcSampPulseTime[i] - 
+                    (adcSampPulseTimeRaw[i] / adcSampleDivisions) - 
+                    tdcoffset;
+                
+                AdcResult &res = adcResults[i];
+                res.Npulse += 1;
+                if (res.Npulse == 1) {
+                    res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
+                    res.Samptime = static_cast<float>(adcSampPulseTime[i]);
+                    res.Sampener = static_cast<float>(adcSampPulseInt[i]);
+                    res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
+                } else {
+                    if (std::fabs(res.Samptime - timemean2) > std::fabs(adcSampPulseTime[i] - timemean2)) {
+                        res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
+                        res.Samptime = static_cast<float>(adcSampPulseTime[i]);
+                        res.Sampener = static_cast<float>(adcSampPulseInt[i]);
+                        res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
+                    }
+                }
+            }
+            return adcResults;
+        },
+        {"Ndata.NPS.cal.fly.adcCounter",
+         "NPS.cal.fly.adcCounter",
+         "NPS.cal.fly.adcSampPulseTime",
+         "NPS.cal.fly.adcSampPulseTimeRaw",
+         "NPS.cal.fly.adcSampPulseAmp",
+         "NPS.cal.fly.adcSampPulseInt",
+         "NPS.cal.fly.adcSampPed"}
+    );
 
     // Step 5: Compute additional quantities (energies, noise, signal widths, etc.)
     // Here, define another lambda that uses the previous branches.
@@ -133,12 +133,12 @@ void DataAnalysisManager::ProcessData() {
         "H.gtr.th",
         "H.gtr.ph",
         "H.gtr.dp",
-        "blocks_float"
+        "adc_results"
     };
 
     std::string outputPath = fileConfig.basePath + fileConfig.outputSubdir + "flattened_output.root";
     std::cout << "Writing flattened output to: " << outputPath << std::endl;
 
     // Write the final TTree to disk. Note: Snapshot is the terminal action.
-    dfFlattened.Snapshot(fileConfig.outputTree, outputPath, outputBranches);
+    dfAdc.Snapshot(fileConfig.outputTree, outputPath, outputBranches);
 }

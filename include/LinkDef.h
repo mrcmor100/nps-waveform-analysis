@@ -7,4 +7,5 @@
 #pragma link C++ class DataBlock<float, NumSamples>+;
 #pragma link C++ class DataBlock<double, NumSamples>+;
 #pragma link C++ class std::vector<DataBlock<float, NumSamples> >+;
+#pragma link C++ class std::vector<AdcResult>+;
 #endif

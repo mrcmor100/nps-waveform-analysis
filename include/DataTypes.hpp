@@ -27,3 +27,11 @@ struct DataBlock {
 };
 using DataBlockFloat = DataBlock<float, NumSamples>;
 using DataBlockDouble = DataBlock<double, NumSamples>;
+
+struct AdcResult {
+    float Sampampl = -1;
+    float Samptime = -1;
+    float Sampener = -1;
+    float Sampped = -1;
+    int   Npulse   = 0;
+  };
