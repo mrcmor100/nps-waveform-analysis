@@ -49,3 +49,24 @@ struct PeakContainer {
     int nPeaks = 0;                      // Actual number of peaks found
     std::array<Peak, maxPeaks> peaks{};  // Storage for peaks
 };
+
+// Structure to hold a single fit parameter and its limits
+struct FitParameter {
+    double value;
+    double lower_limit;
+    double upper_limit;
+};
+
+struct FitResults {
+    bool good;       // true if a good peak is found
+    double time;     // selected pulse time (or fallback)
+    double amplitude; // selected pulse amplitude (or fallback)
+};
+
+struct BlockFitParameters {
+    // Parameters indexed from 1 up to 2*maxPulses (for peaks)
+    // plus parameter 1 which is a baseline/pedestal
+    std::vector<FitParameter> parameters;
+    // Good flag indicating whether the "good" peak condition was met.
+    bool good;
+};

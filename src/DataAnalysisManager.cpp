@@ -3,6 +3,7 @@
 #include <ROOT/RVec.hxx>
 #include <TMath.h>
 #include <iostream>
+#include <algorithm>  // for std::min
 
 DataAnalysisManager::DataAnalysisManager(TChain* chain, const FileIOConfig& fileCfg, int run)
     : chain(chain), fileConfig(fileCfg), run(run)
@@ -24,7 +25,7 @@ void DataAnalysisManager::ProcessData() {
     );
 
     // Step 2: Convert the raw waveform data from double to float.
-    // We define a new branch "waveform_block_data" that converts the raw data.
+    // We define a new branch "waveform_block_data_float" that converts the raw data.
     auto dfWaveform = dfFiltered.Define("waveform_block_data_float",
         [](const ROOT::RVec<double>& waveform, int nsamp) -> std::vector<float> {
             std::vector<float> flat_data;
@@ -36,9 +37,8 @@ void DataAnalysisManager::ProcessData() {
         {"NPS.cal.fly.adcSampWaveform", "Ndata.NPS.cal.fly.adcSampWaveform"}
     );
 
-    // Step 3: Flatten waveforms into block data.
-    // Here you could, for example, take the flattened data and repackage it
-    // into a vector of your DataBlockFloat structures (if desired).
+    // Step 3: Make DataBlockFloat structures from raw float arrays.
+    // Future steps can operate directly on DataBlockFloats within each event.
     auto dfFlattened = dfWaveform.Define("blocks_float",
         [](const std::vector<float>& flat_data, int /*nsamp*/) -> std::vector<DataBlockFloat> {
             int nBlocks = flat_data.size() / DataBlockSize;
@@ -90,6 +90,8 @@ void DataAnalysisManager::ProcessData() {
         return result;
     };
 
+    // Step 4: Find Peaks within each DataBlockFloat.Data()
+    // Find all the peak amplitude and time within the individual DataBlockFloat objects.
     auto dfPeaks = dfFlattened.Define("block_peaks",
         [findPeaks](const std::vector<DataBlockFloat>& blocks) -> std::vector<PeakContainer> {
             std::vector<PeakContainer> peaks;
@@ -102,9 +104,8 @@ void DataAnalysisManager::ProcessData() {
         {"blocks_float"}
     );    
 
-    // Step 4: Process ADC counters.
-    // Here you would encapsulate the ADC logic (like computing HMS time corrections,
-    // updating pulse counts, and selecting pulse parameters) into a lambda.
+    // Step 5: Calculate ADC parameters.
+    // Here we encapsulate the ADC logic (like computing HMS time corrections,
     auto dfAdc = dfPeaks.Define("adc_results",
         [](int NadcCounters,
            const ROOT::RVec<double>& adcCounters,
@@ -161,16 +162,49 @@ void DataAnalysisManager::ProcessData() {
          "NPS.cal.fly.adcSampPed"}
     );
 
-    // Step 5: Compute additional quantities (energies, noise, signal widths, etc.)
-    // Here, define another lambda that uses the previous branches.
-    // auto dfFinal = dfAdc.Define("additional_quantities", 
-    //     [](const ROOT::RVec<double>& waveform, int nsamp, /* other dependencies */) -> /* appropriate return type */ {
-    //         // Implement energy, noise, width calculations here.
-    //         // This example just returns nsamp for demonstration.
-    //         return nsamp;
-    //     },
-    //     {"NPS.cal.fly.adcSampWaveform", "nblocks"} // list all dependencies required
-    // );
+    auto isGoodPeak = [](double peakTime, double timeref, double timerefacc) -> bool {
+        // Check if the absolute difference is within 4.1 ns.
+        return std::fabs(peakTime - timeref - timerefacc) < 4.1;
+    };
+
+    auto computeFitParameters = [](const std::vector<PeakContainer>& blockPeaks) -> std::vector<FitResults> {
+        std::vector<FitResults> results;
+        results.reserve(blockPeaks.size());
+        double timeref = 100.0;
+        double timerefacc = 50.0;  // constant time offset adjustment
+
+        for (const auto &pc : blockPeaks) {
+            FitResults res;
+            // Set fallback values in case no pulse qualifies.
+            res.good = false;
+            res.time = timerefacc;      // fallback time
+            res.amplitude = 2.0;         // fallback amplitude
+    
+            // Iterate over peaks in the container.
+            for (int i = 0; i < pc.nPeaks; ++i) {
+                // Check "good" criteria: for example, if the absolute difference between the peak time and (timeref + timerefacc) is within 4.1.
+                if (std::fabs(pc.peaks[i].time - timeref - timerefacc) < 4.1) {
+                    res.good = true;
+                    res.time = pc.peaks[i].time;
+                    res.amplitude = pc.peaks[i].amplitude;
+                    break; // take the first good peak.
+                }
+            }
+            results.push_back(res);
+        }
+        return results;
+    };
+
+    // Step 6: Determine Fits for each peak based on time, amplitude and 'goodness'
+    // Perform for each Peak within each DataBlockFloat, which is stored in block_peaks.
+    auto dfFitParams = dfAdc.Define("fit_results", computeFitParameters, {"block_peaks"});
+
+    // Step 7: Fit the actual data using Minuit2 and the relevant branches!
+    // First I need to check the computeFitParameters and load config correctly.
+    // OPTIONAL: Instead of use CPU, stop here and use GPUs for fitting.
+
+    // Step 8: Determine additional quantities (energies, noise, signal widths, etc.)
+    // Could also compare fit results from initial fit parameters.
 
     // Define the final output branches.
     std::vector<std::string> outputBranches = {
@@ -178,12 +212,16 @@ void DataAnalysisManager::ProcessData() {
         "H.gtr.ph",
         "H.gtr.dp",
         "adc_results",
-        "block_peaks"
+        "block_peaks",
+        "fit_results"
     };
+
+    // Should likely flatten objects and store minimal arrays instead of vectors.  
+    // Can follow the Ndata pattern like hcana (input).
 
     std::string outputPath = fileConfig.basePath + fileConfig.outputSubdir + "flattened_output.root";
     std::cout << "Writing flattened output to: " << outputPath << std::endl;
 
     // Write the final TTree to disk. Note: Snapshot is the terminal action.
-    dfAdc.Snapshot(fileConfig.outputTree, outputPath, outputBranches);
+    dfFitParams.Snapshot(fileConfig.outputTree, outputPath, outputBranches);
 }

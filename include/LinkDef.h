@@ -11,4 +11,5 @@
 #pragma link C++ class Peak+;
 #pragma link C++ class PeakContainer+;
 #pragma link C++ class std::vector<PeakContainer>+;
+#pragma link C++ class std::vector<FitResults>+;
 #endif
