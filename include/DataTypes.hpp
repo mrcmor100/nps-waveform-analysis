@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <iostream>
+#include <array>
 #include "Config.hpp"
 
 template <typename T, size_t N>
@@ -35,3 +36,16 @@ struct AdcResult {
     float Sampped = -1;
     int   Npulse   = 0;
   };
+
+// A single peak, storing amplitude and time
+struct Peak {
+    float amplitude = 0;
+    float time = 0;
+};
+
+// Container to store up to 12 peaks per waveform block.
+struct PeakContainer {
+    static constexpr int maxPeaks = 12;
+    int nPeaks = 0;                      // Actual number of peaks found
+    std::array<Peak, maxPeaks> peaks{};  // Storage for peaks
+};

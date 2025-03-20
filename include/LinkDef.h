@@ -8,4 +8,7 @@
 #pragma link C++ class DataBlock<double, NumSamples>+;
 #pragma link C++ class std::vector<DataBlock<float, NumSamples> >+;
 #pragma link C++ class std::vector<AdcResult>+;
+#pragma link C++ class Peak+;
+#pragma link C++ class PeakContainer+;
+#pragma link C++ class std::vector<PeakContainer>+;
 #endif

@@ -58,10 +58,54 @@ void DataAnalysisManager::ProcessData() {
         {"waveform_block_data_float", "Ndata.NPS.cal.fly.adcSampWaveform"}
     );
 
+    auto findPeaks = [](const DataBlockFloat &block) -> PeakContainer {
+        PeakContainer result;
+        // We'll assume the waveform is in block.data and has 110 samples.
+        constexpr int ntime = 110;
+        // Loop over the data; note: adjust the upper bound if needed.
+        for (int it = 0; it < ntime - 6; ++it) {
+            // Example peak-finding criteria:
+            // Check that the waveform increases from it+0 to it+2, then levels off,
+            // and then decreases after it+3. Adjust these conditions to your needs.
+            if (block.data[it] < block.data[it+1] &&
+                block.data[it+1] < block.data[it+2] &&
+                block.data[it+2] <= block.data[it+3] &&
+                block.data[it+3] >= block.data[it+4] &&
+                block.data[it+4] > 0) {
+                // We found a peak; record its amplitude and time.
+                // Here we assume the peak is at it+3; you might choose a more sophisticated
+                // estimate of the peak time.
+                if (result.nPeaks < PeakContainer::maxPeaks) {
+                    result.peaks[result.nPeaks].amplitude = block.data[it+3];
+                    result.peaks[result.nPeaks].time = static_cast<float>(it+3);
+                    result.nPeaks++;
+                } else {
+                    // If we exceed the maximum, break out or issue a warning.
+                    break;
+                }
+                // Skip a few bins to avoid double-counting this peak.
+                it += 4;
+            }
+        }
+        return result;
+    };
+
+    auto dfPeaks = dfFlattened.Define("block_peaks",
+        [findPeaks](const std::vector<DataBlockFloat>& blocks) -> std::vector<PeakContainer> {
+            std::vector<PeakContainer> peaks;
+            peaks.reserve(blocks.size());
+            for (const auto &block : blocks) {
+                peaks.push_back(findPeaks(block));
+            }
+            return peaks;
+        },
+        {"blocks_float"}
+    );    
+
     // Step 4: Process ADC counters.
     // Here you would encapsulate the ADC logic (like computing HMS time corrections,
     // updating pulse counts, and selecting pulse parameters) into a lambda.
-    auto dfAdc = dfFlattened.Define("adc_results",
+    auto dfAdc = dfPeaks.Define("adc_results",
         [](int NadcCounters,
            const ROOT::RVec<double>& adcCounters,
            const ROOT::RVec<double>& adcSampPulseTime,
@@ -133,7 +177,8 @@ void DataAnalysisManager::ProcessData() {
         "H.gtr.th",
         "H.gtr.ph",
         "H.gtr.dp",
-        "adc_results"
+        "adc_results",
+        "block_peaks"
     };
 
     std::string outputPath = fileConfig.basePath + fileConfig.outputSubdir + "flattened_output.root";
