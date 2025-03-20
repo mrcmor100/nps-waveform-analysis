@@ -34,8 +34,13 @@ struct AdcResult {
     float Samptime = -1;
     float Sampener = -1;
     float Sampped = -1;
-    int   Npulse   = 0;
   };
+
+struct AdcEventData {
+    double HMS_corr_time = 0.0;
+    int Npulse = 0;
+    std::vector<AdcResult> adcResults;
+};
 
 // A single peak, storing amplitude and time
 struct Peak {
@@ -47,6 +52,7 @@ struct Peak {
 struct PeakContainer {
     static constexpr int maxPeaks = 12;
     int nPeaks = 0;                      // Actual number of peaks found
+    int peakOverflow = 0;
     std::array<Peak, maxPeaks> peaks{};  // Storage for peaks
 };
 

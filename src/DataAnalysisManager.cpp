@@ -37,11 +37,19 @@ void DataAnalysisManager::ProcessData() {
         {"NPS.cal.fly.adcSampWaveform", "Ndata.NPS.cal.fly.adcSampWaveform"}
     );
 
-    // Step 3: Make DataBlockFloat structures from raw float arrays.
+    // Step 3a: Determine Number of Waveforms assuming DataBlockSized DataBlocks
+    // Save the size for use in future steps.
+    auto dfSizeBlocks = dfWaveform.Define("n_blocks",
+        [] (int adcSampWaveformSize) {
+            return adcSampWaveformSize / static_cast<int>(DataBlockSize);
+        },
+        {"Ndata.NPS.cal.fly.adcSampWaveform"}
+    );
+
+    // Step 3b: Make DataBlockFloat structures from raw float arrays.
     // Future steps can operate directly on DataBlockFloats within each event.
-    auto dfFlattened = dfWaveform.Define("blocks_float",
-        [](const std::vector<float>& flat_data, int /*nsamp*/) -> std::vector<DataBlockFloat> {
-            int nBlocks = flat_data.size() / DataBlockSize;
+    auto dfFlattened = dfSizeBlocks.Define("blocks_float",
+        [](const std::vector<float>& flat_data, int nBlocks) -> std::vector<DataBlockFloat> {
             std::vector<DataBlockFloat> blocks;
             blocks.reserve(nBlocks);
             for (int i = 0; i < nBlocks; ++i) {
@@ -55,15 +63,13 @@ void DataAnalysisManager::ProcessData() {
             }
             return blocks;
         },
-        {"waveform_block_data_float", "Ndata.NPS.cal.fly.adcSampWaveform"}
+        {"waveform_block_data_float", "n_blocks"}
     );
 
     auto findPeaks = [](const DataBlockFloat &block) -> PeakContainer {
         PeakContainer result;
-        // We'll assume the waveform is in block.data and has 110 samples.
-        constexpr int ntime = 110;
         // Loop over the data; note: adjust the upper bound if needed.
-        for (int it = 0; it < ntime - 6; ++it) {
+        for (int it = 0; it < NumSamples - 6; ++it) {
             // Example peak-finding criteria:
             // Check that the waveform increases from it+0 to it+2, then levels off,
             // and then decreases after it+3. Adjust these conditions to your needs.
@@ -80,7 +86,7 @@ void DataAnalysisManager::ProcessData() {
                     result.peaks[result.nPeaks].time = static_cast<float>(it+3);
                     result.nPeaks++;
                 } else {
-                    // If we exceed the maximum, break out or issue a warning.
+                    result.peakOverflow = 1;
                     break;
                 }
                 // Skip a few bins to avoid double-counting this peak.
@@ -104,54 +110,59 @@ void DataAnalysisManager::ProcessData() {
         {"blocks_float"}
     );    
 
+    // Lambda to process a single ADC entry
+    auto processAdcEntry = [](AdcResult& res,
+        float pulseAmp, float pulseTime, float pulseInt,
+        float pulsePed, float timemean2, int Npulse) {
+        // If it's the first pulse or the new pulse is closer to the reference time, update the result.
+        if (Npulse == 1 || std::fabs(res.Samptime - timemean2) > 
+                               std::fabs(pulseTime    - timemean2)) {
+            res.Sampampl = pulseAmp;
+            res.Samptime  = pulseTime;
+            res.Sampener  = pulseInt;
+            res.Sampped   = pulsePed;
+        }
+    };
+
     // Step 5: Calculate ADC parameters.
     // Here we encapsulate the ADC logic (like computing HMS time corrections,
     auto dfAdc = dfPeaks.Define("adc_results",
-        [](int NadcCounters,
-           const ROOT::RVec<double>& adcCounters,
-           const ROOT::RVec<double>& adcSampPulseTime,
-           const ROOT::RVec<double>& adcSampPulseTimeRaw,
-           const ROOT::RVec<double>& adcSampPulseAmp,
-           const ROOT::RVec<double>& adcSampPulseInt,
-           const ROOT::RVec<double>& adcSampPulsePed) -> std::vector<AdcResult> 
-        {
-            // TODO: Implement slot-by-slot tdcoffset and timemean2 (if needed)
-            Float_t tdcoffset = 0.; Float_t timemean2 = 150.;
-            Float_t adcSampleDivisions = 16.0;
-            Double_t corr_time_HMS = 0.0;
-            // Resize adcResults to known size to avoid allocations
-            std::vector<AdcResult> adcResults;
-            adcResults.resize(NadcCounters);
+        [processAdcEntry](int NadcCounters,
+                           const ROOT::RVec<double>& adcCounters,
+                           const ROOT::RVec<double>& adcSampPulseTime,
+                           const ROOT::RVec<double>& adcSampPulseTimeRaw,
+                           const ROOT::RVec<double>& adcSampPulseAmp,
+                           const ROOT::RVec<double>& adcSampPulseInt,
+                           const ROOT::RVec<double>& adcSampPulsePed) -> AdcEventData {
 
-            bool first = true;
-            for (int i=0; i < NadcCounters; ++i) {
-                if(first==true) {
-                    corr_time_HMS = adcSampPulseTime[i] - 
-                    (adcSampPulseTimeRaw[i] / adcSampleDivisions) - 
-                    tdcoffset;
-                }
-                first = false;
-                double expected = adcSampPulseTime[i] - 
-                    (adcSampPulseTimeRaw[i] / adcSampleDivisions) - 
-                    tdcoffset;
-                
-                AdcResult &res = adcResults[i];
-                res.Npulse += 1;
-                if (res.Npulse == 1) {
-                    res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
-                    res.Samptime = static_cast<float>(adcSampPulseTime[i]);
-                    res.Sampener = static_cast<float>(adcSampPulseInt[i]);
-                    res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
-                } else {
-                    if (std::fabs(res.Samptime - timemean2) > std::fabs(adcSampPulseTime[i] - timemean2)) {
-                        res.Sampampl = static_cast<float>(adcSampPulseAmp[i]);
-                        res.Samptime = static_cast<float>(adcSampPulseTime[i]);
-                        res.Sampener = static_cast<float>(adcSampPulseInt[i]);
-                        res.Sampped  = static_cast<float>(adcSampPulsePed[i]);
-                    }
-                }
+            const float tdcoffset = 0.;            // The tdcoffset will be slot-by-slot
+            const float timemean2 = 150.;          // The timemean2 will be a global
+            const float adcSampleDivisions = 16.0; // adcSampleDivisons should be global
+            int Npulse = 0;
+            AdcEventData eventData;
+            eventData.adcResults.resize(NadcCounters);
+    
+            // Compute the HMS correction time once, from the first ADC channel.
+            eventData.HMS_corr_time = adcSampPulseTime[0] -
+                                      (adcSampPulseTimeRaw[0] / adcSampleDivisions) -
+                                      tdcoffset;
+    
+            // Optional: Check adcCoutner is a valid slot (0-1079,2000,2001)
+            // To implement checkValidSlot
+
+            // Process every ADC entry using the lambda.
+            for (int i = 0; i < NadcCounters; ++i) {
+                processAdcEntry(eventData.adcResults[i],
+                    static_cast<float>(adcSampPulseAmp[i]),
+                    static_cast<float>(adcSampPulseTime[i]),
+                    static_cast<float>(adcSampPulseInt[i]),
+                    static_cast<float>(adcSampPulsePed[i]),
+                    timemean2, Npulse
+                );
+                Npulse++;
             }
-            return adcResults;
+            eventData.Npulse = Npulse;
+            return eventData;
         },
         {"Ndata.NPS.cal.fly.adcCounter",
          "NPS.cal.fly.adcCounter",
