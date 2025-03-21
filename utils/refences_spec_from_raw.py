@@ -75,7 +75,7 @@ def main():
         outf.write("# Bining of References: min max step\n")
         outf.write("0.5 109.5 110\n")
         outf.write("# Actual block data:\n")
-        outf.write("# block_number, timeRef, tdc_offset, values[]\n")
+        outf.write("# block_number timeRef tdc_offset values[]\n")
 
         for block_number in sorted_blocks:
             fname = block_files[block_number]
@@ -88,10 +88,10 @@ def main():
                 tdc_str = format_tdc_offset(tdc_offset)
 
                 # Format waveform values as aligned strings
-                formatted_values = ", ".join((v) for v in values)
+                formatted_values = " ".join((v) for v in values)
 
                 # Final formatted line
-                outf.write(f"{block_str}, {time_str}, {tdc_str}, {formatted_values}\n")
+                outf.write(f"{block_str} {time_str} {tdc_str} {formatted_values}\n")
             except Exception as e:
                 print(f"Failed to process block {block_number}: {e}")
 

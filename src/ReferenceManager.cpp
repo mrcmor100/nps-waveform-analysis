@@ -46,7 +46,8 @@ bool ReferenceManager::LoadReferenceWaveforms() {
 
     // Append remaining fallbacks
     for (const auto* fp : sortedPatterns) {
-        if (!seen.count(fp)) {
+        // Patterns must for runs prior to this run.
+        if (!seen.count(fp) && fp->rangeEnd < run && fp->elasticEnd < run) {
             patternOrder.push_back(fp);
         }
     }
@@ -57,8 +58,13 @@ bool ReferenceManager::LoadReferenceWaveforms() {
 
     std::set<int> requiredChannels;
     for (const auto& ch : refConfig.ChannelTypes) {
-        for (int i = ch.chStart; i <= ch.chEnd; ++i) {
-            requiredChannels.insert(i);
+        if(ch.channelName.compare("blocks") == 0) {
+            std::cout << "Including all Block channels.\n";
+            for (int i = ch.chStart; i <= ch.chEnd; ++i) {
+                requiredChannels.insert(i);
+            }
+        } else {
+            std::cout << "Excluding all: " << ch.channelName << " channels\n";
         }
     }
 
@@ -113,7 +119,7 @@ bool ReferenceManager::LoadReferenceWaveforms() {
             int block;
             double timeRef, tdcOffset;
             char comma;
-            iss >> block >> comma >> timeRef >> comma >> tdcOffset >> comma;
+            iss >> block >> timeRef >> tdcOffset;
 
             if (loadedBlocks.count(block)) continue;
 

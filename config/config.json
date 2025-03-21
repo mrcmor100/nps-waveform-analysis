@@ -46,10 +46,10 @@
     "patterns": [
       { "elastic_range": [1423, 1511], "prod_range": [1560, 1961],
         "path": "reference_waveforms/RWF_1423_1511_Setting.txt" },
-      { "elastic_range": [1969, 1982], "prod_range": [1983, 2855],
+      { "elastic_range": [1969, 1982], "prod_range": [1983, 2854],
         "path": "reference_waveforms/RWF_1969_1982_Setting.txt" },
       { "elastic_range": [2855, 2871], "prod_range": [2872, 2874],
-        "path": "reference_waveforms/RWF_2855_2885_Setting.txt" },
+        "path": "reference_waveforms/RWF_2855_2871_Setting.txt" },
       { "elastic_range": [2875, 2885], "prod_range": [2886, 2899],
         "path": "reference_waveforms/RWF_2875_2885_Setting.txt" },
       { "elastic_range": [2900, 2920], "prod_range": [2921, 3882],
