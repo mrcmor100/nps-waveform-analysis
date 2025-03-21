@@ -5,6 +5,12 @@
 #include <vector>
 #include <unordered_map>
 
+enum class RunType {
+    Unknown,
+    Prod,
+    Elastic
+};
+
 // Global configuration structure (default values are in the "global" section).
 struct GlobalConfig {
     int nchannel;
@@ -44,7 +50,27 @@ struct FileIOConfig {
 struct FilePattern {
     int rangeStart;
     int rangeEnd;
+    int elasticStart;
+    int elasticEnd;
     std::string path;
+
+    bool MatchesProd(int run) const {
+        return run >= rangeStart && run <= rangeEnd;
+    }
+
+    bool MatchesElastic(int run) const {
+        return run >= elasticStart && run <= elasticEnd;
+    }
+
+    bool MatchesAny(int run) const {
+        return MatchesProd(run) || MatchesElastic(run);
+    }
+};
+
+struct ChannelType {
+    int chStart;
+    int chEnd;
+    std::string channelName;
 };
 
 // Reference configuration structure. In addition to run-dependent
@@ -53,10 +79,8 @@ struct FilePattern {
 struct ReferenceConfig {
     // Waveform file patterns and default.
     std::vector<FilePattern> waveformPatterns;
+    std::vector<ChannelType> ChannelTypes;
     std::string waveformDefault;
-    // TDC file patterns and default.
-    std::vector<FilePattern> tdcPatterns;
-    std::string tdcDefault;
 };
 
 #endif // MANAGER_CONFIGS_HPP

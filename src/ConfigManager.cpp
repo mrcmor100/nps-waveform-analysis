@@ -72,28 +72,47 @@ void ConfigManager::LoadFileIOConfig() {
 
 void ConfigManager::LoadReferenceConfig() {
     try {
-        // Load waveform file patterns.
         auto& wfFiles = config.at("waveform_files");
+
+        std::vector<std::pair<int, int>> allProdRanges;
+        std::vector<std::pair<int, int>> allElasticRanges;
+
         for (const auto& pat : wfFiles.at("patterns")) {
             FilePattern fp;
-            fp.rangeStart = pat.at("range")[0].get<int>();
-            fp.rangeEnd   = pat.at("range")[1].get<int>();
-            fp.path       = pat.at("path").get<std::string>();
+            fp.rangeStart   = pat.at("prod_range")[0].get<int>();
+            fp.rangeEnd     = pat.at("prod_range")[1].get<int>();
+            fp.elasticStart = pat.at("elastic_range")[0].get<int>();
+            fp.elasticEnd   = pat.at("elastic_range")[1].get<int>();
+            fp.path         = pat.at("path").get<std::string>();
+
             referenceConfig.waveformPatterns.push_back(fp);
+
+            allProdRanges.emplace_back(fp.rangeStart, fp.rangeEnd);
+            allElasticRanges.emplace_back(fp.elasticStart, fp.elasticEnd);
         }
+
+        // Check for cross-pattern overlap between prod and elastic ranges
+        for (const auto& [pStart, pEnd] : allProdRanges) {
+            for (const auto& [eStart, eEnd] : allElasticRanges) {
+                if (std::max(pStart, eStart) <= std::min(pEnd, eEnd)) {
+                    std::cerr << "Error: Overlap detected between prod range ["
+                              << pStart << "," << pEnd << "] and elastic range ["
+                              << eStart << "," << eEnd << "]\n";
+                    throw std::runtime_error("Overlapping production and elastic ranges across patterns.");
+                }
+            }
+        }
+
         referenceConfig.waveformDefault = wfFiles.at("default_pattern").get<std::string>();
 
-        // Load tdc file patterns.
-        auto& tdcFiles = config.at("tdc_files");
-        for (const auto& pat : tdcFiles.at("patterns")) {
-            FilePattern fp;
-            fp.rangeStart = pat.at("range")[0].get<int>();
-            fp.rangeEnd   = pat.at("range")[1].get<int>();
-            fp.path       = pat.at("path").get<std::string>();
-            referenceConfig.tdcPatterns.push_back(fp);
+        for (const auto& pat : wfFiles.at("channels")) {
+            ChannelType ct;
+            ct.channelName = pat.at("name").get<std::string>();
+            ct.chStart     = pat.at("range")[0].get<int>();
+            ct.chEnd       = pat.at("range")[1].get<int>();
+            referenceConfig.ChannelTypes.push_back(ct);
         }
-        referenceConfig.tdcDefault = tdcFiles.at("default_pattern").get<std::string>();
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         std::cerr << "Error loading reference configuration: " << e.what() << std::endl;
     }
 }

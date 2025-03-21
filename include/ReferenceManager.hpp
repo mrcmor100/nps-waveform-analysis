@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include "TF1.h"
 #include "Math/Interpolator.h"
 
@@ -19,6 +20,7 @@ public:
     const ROOT::Math::Interpolator* GetInterpolator(int block) const;
     TF1* GetFitter(int block) const;
 private:
+    RunType runType;
     int run;
     int nblocks;
     int ntime;

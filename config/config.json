@@ -42,38 +42,33 @@
     }
   ], 
 
-  "tdc_files": {
-    "patterns": [
-      { "range": [6000, 7500], "path": "tdc_offsets/tdc_6000-7500.txt" },
-      { "range": [5183, 5208], "path": "tdc_offsets/tdc_5183-5208.txt" }
-    ],
-    "default_pattern": "tdc_offsets/default_tdc.txt"
-  },
-
   "waveform_files": {
     "patterns": [
-      { "range": [1560, 1961], "elastic_range": [1423, 1511],
+      { "elastic_range": [1423, 1511], "prod_range": [1560, 1961],
         "path": "reference_waveforms/RWF_1423_1511_Setting.txt" },
-      { "range": [1982, 2855], "elastic_range": [1969, 1982],
+      { "elastic_range": [1969, 1982], "prod_range": [1983, 2855],
         "path": "reference_waveforms/RWF_1969_1982_Setting.txt" },
-      { "range": [2871, 2875], "elastic_range": [2855, 2871],
+      { "elastic_range": [2855, 2871], "prod_range": [2872, 2874],
         "path": "reference_waveforms/RWF_2855_2885_Setting.txt" },
-      { "range": [2885, 2900], "elastic_range": [2875, 2885],
+      { "elastic_range": [2875, 2885], "prod_range": [2886, 2899],
         "path": "reference_waveforms/RWF_2875_2885_Setting.txt" },
-      { "range": [2920, 3883], "elastic_range": [2900, 2920],
+      { "elastic_range": [2900, 2920], "prod_range": [2921, 3882],
         "path": "reference_waveforms/RWF_2900_2920_Setting.txt" },
-      { "range": [3898, 5183], "elastic_range": [3883, 3898],
+      { "elastic_range": [3883, 3898], "prod_range": [3899, 5182],
         "path": "reference_waveforms/RWF_3883_3898_Setting.txt" },
-      { "range": [5208, 5217], "elastic_range": [5183, 5208],
+      { "elastic_range": [5183, 5208], "prod_range": [5209, 5216],
         "path": "reference_waveforms/RWF_5183_5208_Setting.txt" },
-      { "range": [5236, 6151], "elastic_range": [5217, 5236],
+      { "elastic_range": [5217, 5236], "prod_range": [5237, 6150],
         "path": "reference_waveforms/RWF_5217_6236_Setting.txt" },
-      { "range": [6168, 6171], "elastic_range": [6151, 6168],
+      { "elastic_range": [6151, 6168], "prod_range": [6169, 6170],
         "path": "reference_waveforms/RWF_6151_6168_Setting.txt" }, 
-      { "range": [6183, 7500], "elastic_range": [6171, 6183],
+      { "elastic_range": [6171, 6183], "prod_range": [6184, 7500],
         "path": "reference_waveforms/RWF_6171_6183_Setting.txt" }
     ],
-    "channels": {"blocks": [0,1079], "scintillators": [2000,2001]},
+    "channels": [
+      { "name": "blocks", "range": [0,1079]},
+      { "name": "scintillators", "range": [2000,2001] } 
+    ],
     "default_pattern": "reference_waveforms/RWF_1423_1511_Setting.txt"
   },
 
