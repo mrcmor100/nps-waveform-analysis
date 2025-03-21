@@ -118,9 +118,9 @@ void DataAnalysisManager::ProcessData() {
         if (Npulse == 1 || std::fabs(res.Samptime - timemean2) > 
                                std::fabs(pulseTime    - timemean2)) {
             res.Sampampl = pulseAmp;
-            res.Samptime  = pulseTime;
-            res.Sampener  = pulseInt;
-            res.Sampped   = pulsePed;
+            res.Samptime = pulseTime;
+            res.Sampener = pulseInt;
+            res.Sampped  = pulsePed;
         }
     };
 
@@ -137,6 +137,7 @@ void DataAnalysisManager::ProcessData() {
 
             const float tdcoffset = 0.;            // The tdcoffset will be slot-by-slot
             const float timemean2 = 150.;          // The timemean2 will be a global
+            // Converting 4ns bin over 64 samples from FPGA word and dividing to get (ns)
             const float adcSampleDivisions = 16.0; // adcSampleDivisons should be global
             int Npulse = 0;
             AdcEventData eventData;
@@ -175,6 +176,8 @@ void DataAnalysisManager::ProcessData() {
 
     auto isGoodPeak = [](double peakTime, double timeref, double timerefacc) -> bool {
         // Check if the absolute difference is within 4.1 ns.
+        // TODO - Make 4.1 a global passed in from GlobalManager.
+        // Use timeref per slot, load global timerefacc
         return std::fabs(peakTime - timeref - timerefacc) < 4.1;
     };
 

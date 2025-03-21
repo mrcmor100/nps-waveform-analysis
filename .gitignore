@@ -26,6 +26,7 @@ CTestTestfile.cmake
 *.dylib
 *.dll
 *.exe
+*.pdf
 
 # Ignore compiled binary
 /bin/
