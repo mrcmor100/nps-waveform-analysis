@@ -6,24 +6,25 @@
 #include <TFile.h>
 #include <string>
 #include <vector>
-#include <cstdio>
 #include <iostream>
 #include <filesystem>
 #include <regex>
 
 class FileManager {
 public:
-    // Constructor now accepts a FileIOConfig struct.
+    // The API now requires file patterns to use the <run> and <segment> keywords.
     FileManager(const FileIOConfig& fileCfg);
     TChain* LoadTChain(int run);
     TFile* CreateOutputFile(int run, int segment);
 private:
     FileIOConfig fileConfig;
     // Helper functions for path resolution.
-    std::string ResolvePath(const std::string& pattern, int value1, int value2);
+    std::string ResolvePath(const std::string& pattern, int run, int segment);
     std::string GetInputFilePath(int run, int segment);
     std::string GetOutputFilePath(int run, int segment);
     std::vector<int> DetectSegments(int run) const;
+    // Helper: escapes regex metacharacters except those within placeholders (<...>)
+    std::string EscapeRegexExceptPlaceholders(const std::string& pattern) const;
 };
 
 #endif // FILE_MANAGER_HPP

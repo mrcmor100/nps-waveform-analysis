@@ -67,7 +67,11 @@ void ConfigManager::LoadFileIOConfig() {
         fileIOConfig.inputTree     = io.at("input_tree").get<std::string>();
         fileIOConfig.outputTree    = io.at("output_tree").get<std::string>();
 
-        // Handle flexible input_segments
+        if (fileIOConfig.inputPattern.find("<run>") == std::string::npos) {
+            throw std::runtime_error("input_rootfile pattern must contain at least the <run> keyword.");
+        }
+
+        // Flexible input_segments: can be an array, a range like "2-5", or "all".
         const auto& segments = io.at("input_segments");
         if (segments.is_array()) {
             for (const auto& seg : segments) {
@@ -96,11 +100,11 @@ void ConfigManager::LoadFileIOConfig() {
                           << "\". Must be \"all\", a list, or a simple range like \"2-5\".\n";
             }
         }
-
     } catch (const std::exception &e) {
         std::cerr << "Error loading file I/O configuration: " << e.what() << std::endl;
     }
 }
+
 
 void ConfigManager::LoadReferenceConfig() {
     try {
