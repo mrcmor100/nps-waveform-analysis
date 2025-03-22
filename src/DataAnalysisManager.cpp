@@ -6,7 +6,6 @@
 
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RVec.hxx>
-#include <TMath.h>
 #include <iostream>
 #include <algorithm>  // for std::min
 

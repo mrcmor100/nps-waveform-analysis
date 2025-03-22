@@ -43,7 +43,8 @@ target_link_libraries(DataBlockDict ${ROOT_LIBRARIES})
 
 # --- Project Source Files ---
 add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchManager.cpp 
-  src/ReferenceManager.cpp src/FileManager.cpp src/GlobalManager.cpp src/DataAnalysisManager.cpp)
+  src/ReferenceManager.cpp src/FileManager.cpp src/GlobalManager.cpp src/DataAnalysisManager.cpp
+  src/ApplicationManager.cpp)
 
 add_custom_command(
   TARGET RootWaveformAnalysis POST_BUILD

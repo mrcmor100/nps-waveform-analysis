@@ -8,6 +8,7 @@ ConfigManager::ConfigManager(const std::string& configPath, int run)
     : currentRun(run)
 {
     LoadConfig(configPath);
+    LoadApplicationConfig();
     LoadGlobalConfig();
     LoadBranchConfig();
     LoadFileIOConfig();
@@ -21,6 +22,17 @@ void ConfigManager::LoadConfig(const std::string& configPath) {
         throw std::runtime_error("Could not open config file: " + configPath);
     }
     file >> config;
+}
+
+void ConfigManager::LoadApplicationConfig() {
+    try {
+        auto& app = config.at("processing_settings");
+        applicationConfig.nProcessors = app.at("num_cores").get<int>();
+        applicationConfig.version = app.at("waveform_analysis_version").get<std::string>();
+
+    } catch (const std::exception &e) {
+        throw std::runtime_error("Error loading application configuration: " + std::string(e.what()));
+    }
 }
 
 void ConfigManager::LoadGlobalConfig() {

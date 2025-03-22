@@ -41,10 +41,15 @@ int main(int argc, char* argv[]) {
         ConfigManager config(configFile, run);
 
         // Retrieve configuration structs.
+        const ApplicationConfig& applicationCfg = config.GetApplicationConfig();
         const GlobalConfig& globalCfg = config.GetGlobalConfig();
         const BranchConfig& branchCfg = config.GetBranchConfig();
         const FileIOConfig& fileCfg   = config.GetFileIOConfig();
         const ReferenceConfig& refCfg = config.GetReferenceConfig();
+
+        // Just some fun messages about app and cores.
+        std::cout << "Running Waveform Analysis Application at version: " << applicationCfg.version << '\n';
+        std::cout << "Utilizing " << applicationCfg.nProcessors << " processors\n";
 
         // Create and use managers.
         FileManager fileManager(fileCfg);

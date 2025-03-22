@@ -13,6 +13,7 @@ public:
     ConfigManager(const std::string& configPath, int run);
 
     // Getters for our configuration structs.
+    const ApplicationConfig& GetApplicationConfig() const { return applicationConfig; }
     const GlobalConfig& GetGlobalConfig() const { return globalConfig; }
     const BranchConfig& GetBranchConfig() const { return branchConfig; }
     const FileIOConfig& GetFileIOConfig() const { return fileIOConfig; }
@@ -23,6 +24,7 @@ private:
     // Load JSON file.
     void LoadConfig(const std::string& configPath);
     // Load sections into our structs.
+    void LoadApplicationConfig();
     void LoadGlobalConfig();
     void LoadBranchConfig();
     void LoadFileIOConfig();
@@ -33,6 +35,7 @@ private:
     json config;
     int currentRun;
 
+    ApplicationConfig applicationConfig;
     GlobalConfig globalConfig;
     BranchConfig branchConfig;
     FileIOConfig fileIOConfig;

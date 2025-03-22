@@ -11,6 +11,11 @@ enum class RunType {
     Elastic
 };
 
+struct ApplicationConfig {
+    int nProcessors;
+    std::string version;
+};
+
 // Global configuration structure (default values are in the "global" section).
 struct GlobalConfig {
     int nchannel;
