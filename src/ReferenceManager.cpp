@@ -2,24 +2,11 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-ReferenceManager::ReferenceManager(int run, const GlobalConfig& globalCfg, const ReferenceConfig& refCfg)
-    : run(run), nblocks(globalCfg.nblocks), ntime(globalCfg.ntime), refConfig(refCfg) {
-        runType = RunType::Unknown;
-        for (const auto& pattern : refConfig.waveformPatterns) {
-            if (pattern.MatchesProd(run)) {
-                runType = RunType::Prod;
-                break;
-            } else if (pattern.MatchesElastic(run)) {
-                runType = RunType::Elastic;
-                break;
-            }
-        }
+ReferenceManager::ReferenceManager(const ReferenceConfig& refCfg)
+    : refConfig(refCfg), run(-1)
+{
+}
     
-        std::cout << "Run " << run << " is a "
-                  << (runType == RunType::Prod ? "production" :
-                      runType == RunType::Elastic ? "elastic" : "unknown")
-                  << " run.\n";
-    }
 
 bool ReferenceManager::LoadReferenceWaveforms() {
     std::cout << "Loading reference waveforms for run: " << run << std::endl;
@@ -168,4 +155,30 @@ const ROOT::Math::Interpolator* ReferenceManager::GetInterpolator(int block) con
 TF1* ReferenceManager::GetFitter(int block) const {
     auto it = fitters.find(block);
     return (it != fitters.end()) ? it->second.get() : nullptr;
+}
+
+void ReferenceManager::ApplyConfig(int _run) {
+    run = _run;
+    runType = RunType::Unknown;
+    for (const auto& pattern : refConfig.waveformPatterns) {
+        if (pattern.MatchesProd(run)) {
+            runType = RunType::Prod;
+            break;
+        } else if (pattern.MatchesElastic(run)) {
+            runType = RunType::Elastic;
+            break;
+        }
+    }
+
+    std::cout << "Run " << run << " is a "
+              << (runType == RunType::Prod ? "production" :
+                  runType == RunType::Elastic ? "elastic" : "unknown")
+              << " run.\n";
+
+    
+    // Load reference waveforms.
+    if (this->LoadReferenceWaveforms()) {
+        std::cerr << "Failed to load reference waveforms.\n";
+        //Throw runtime error?
+    }
 }

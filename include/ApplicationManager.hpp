@@ -11,8 +11,10 @@ public:
     // Accessor methods for application parameters.
     int GetNProcs() const;
     std::string GetVersion() const;
+    void ApplyConfig(int _run);
     // You can add additional getters as needed.
 private:
+    int run;
     ApplicationConfig config;
 };
 

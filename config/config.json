@@ -11,7 +11,7 @@
     "input_tree": "T",
     "input_segments": "all",
     "output_tree": "TOUT",
-    "output_rootfile": "nps_hms_coin_<run>_1_-1_out.root"
+    "output_rootfile": "nps_hms_coin_<run>_out.root"
   },
 
   "global": {

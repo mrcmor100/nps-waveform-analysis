@@ -167,41 +167,45 @@ void ConfigManager::LoadReferenceConfig() {
 }
 
 void ConfigManager::ApplyRunOverrides() {
-    // run_parameters is an array of override objects.
+    // Check if there is a "run_parameters" array in the JSON.
     if (config.contains("run_parameters")) {
         for (const auto& overrideObj : config.at("run_parameters")) {
-            // Ensure a "range" field exists.
+            // Ensure a "range" field exists and is an array.
             if (!overrideObj.contains("range") || !overrideObj.at("range").is_array()) {
                 std::cerr << "Skipping invalid run_parameters override entry." << std::endl;
                 continue;
             }
+            // Extract the run range.
             int low = overrideObj.at("range")[0].get<int>();
             int high = overrideObj.at("range")[1].get<int>();
-            if (currentRun < low || currentRun > high) {
-                continue; // This override does not apply to the current run.
-            }
-            // For each key in the override (other than "range"), check if it belongs to global or reference.
+
+            // Create an override object.
+            GlobalRunOverride runOverride;
+            runOverride.runLow = low;
+            runOverride.runHigh = high;
+
+            // Process each key in the override object (except "range").
             for (auto it = overrideObj.begin(); it != overrideObj.end(); ++it) {
                 std::string key = it.key();
-                if (key == "range")
+                if (key == "range") {
                     continue;
-                // If the key exists in global, override it.
-                if (globalConfig.nblocks && key == "nblocks") {
-                    globalConfig.nblocks = it.value().get<int>();
-                }
-                if (globalConfig.ntime && key == "ntime") {
-                    globalConfig.ntime = it.value().get<int>();
-                }
-                if (globalConfig.ncol && key == "ncol") {
-                    globalConfig.ncol = it.value().get<int>();
-                }
-                // If not in global, check if it belongs to ReferenceConfig.
-                if (key == "timerefacc") {
-                    globalConfig.timerefacc = it.value().get<int>();
-                    std::cout << "Overriding timerefacc for run: " << currentRun << '\n';
+                } else if (key == "ntime") {
+                    runOverride.ntimeOverride = it.value().get<int>();
+                    std::cout << "Found run override for ntime for range: [" 
+                    << low << ", " << high << "]" << std::endl;
+
+                } else if (key == "timerefacc") {
+                    runOverride.timerefaccOverride = it.value().get<double>();
+                    std::cout << "Found run override for timerefacc for range: [" 
+                              << low << ", " << high << "]" << std::endl;
+                } else {
+                    std::cerr << "Unknown run_parameters override entry: " << key << std::endl;
+                    throw std::runtime_error("Unknown run_parameters override entry.");
                 }
                 // Add further keys as needed.
             }
+            // Add the override to the vector in globalConfig.
+            globalConfig.runOverrides.push_back(runOverride);
         }
     }
 }

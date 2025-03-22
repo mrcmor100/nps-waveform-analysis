@@ -16,6 +16,14 @@ struct ApplicationConfig {
     std::string version;
 };
 
+struct GlobalRunOverride {
+    int runLow;
+    int runHigh;
+    // Example overrides; add more as needed.
+    int ntimeOverride = 0;
+    int timerefaccOverride = 0;
+};
+
 // Global configuration structure (default values are in the "global" section).
 struct GlobalConfig {
     int nchannel;
@@ -33,6 +41,8 @@ struct GlobalConfig {
     double integtopC;
     double timerefacc;
     double peakTolerance;
+
+    std::vector<GlobalRunOverride> runOverrides;
 };
 
 // Branch configuration structure.

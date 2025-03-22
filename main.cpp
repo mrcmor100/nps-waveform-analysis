@@ -53,12 +53,11 @@ int main(int argc, char* argv[]) {
 
         // Create and use managers.
         FileManager fileManager(fileCfg);
-        TChain* chain = fileManager.LoadTChain(run);
-        TFile* outputFile = fileManager.CreateOutputFile(run, 0);
-
+        fileManager.ApplyConfig(run);
+        TChain* chain = fileManager.GetInputChain();
         BranchManager branchManager(chain, branchCfg);
         GlobalManager globalManager(globalCfg);
-        ReferenceManager refManager(run, globalCfg, refCfg);
+        ReferenceManager refManager(refCfg);
 
         // Pass references of managers to analysisManager
         DataAnalysisManager analysisManager(run, chain,
@@ -72,11 +71,6 @@ int main(int argc, char* argv[]) {
         std::cout << "Global nblocks: " << globalManager.GetNblocks() << "\n";
         branchManager.PrintLoadedBranches();
 
-        // Load reference waveforms.
-        if (!refManager.LoadReferenceWaveforms()) {
-            std::cerr << "Failed to load reference waveforms.\n";
-        }
-
         // Process data with RDataFrame:
         analysisManager.ProcessData();
         
@@ -89,10 +83,9 @@ int main(int argc, char* argv[]) {
             std::cout << "Interpolator not available for block " << block << "\n";
         }
 
-        outputFile->Write();
-        outputFile->Close();    
+        //outputFile->Write();
+        //outputFile->Close();    
         // Cleanup.
-        delete chain;
     } catch (const std::exception& e) {
         std::cerr << "Error encountered: " << e.what() << "\n";
         return 1;
