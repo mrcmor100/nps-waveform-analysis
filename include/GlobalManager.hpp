@@ -13,6 +13,7 @@ public:
     int GetNtime() const;
     int GetNchannel() const;
     int GetNcol() const;
+    double GetTimeRefAcc() const;
     double GetPeakTolerance() const;
     void ApplyConfig(int run); 
     // You can add additional getters as needed.

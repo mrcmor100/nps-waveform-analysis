@@ -121,6 +121,9 @@ bool ReferenceManager::LoadReferenceWaveforms() {
                 continue;
             }
 
+            timeRefs[block] = timeRef;
+            tdcOffsets[block] = tdcOffset;
+
             auto interpolator = std::make_unique<ROOT::Math::Interpolator>(xbins.size(), ROOT::Math::Interpolation::kCSPLINE);
             interpolator->SetData(xbins.size(), xbins.data(), y.data());
             interpolators[block] = std::move(interpolator);
@@ -150,6 +153,22 @@ bool ReferenceManager::LoadReferenceWaveforms() {
 const ROOT::Math::Interpolator* ReferenceManager::GetInterpolator(int block) const {
     auto it = interpolators.find(block);
     return (it != interpolators.end()) ? it->second.get() : nullptr;
+}
+
+std::map<int,double> GetTimeRefs() const {
+    return timeRefs;
+}
+
+std::map<int,double> GettdcOffsets() const {
+    return tdcOffsets;
+}
+
+double GetTimeMean() const {
+    return refConfig.timemean;
+}
+
+double GetTimeMean2() const {
+    return refConfig.timemean2;
 }
 
 TF1* ReferenceManager::GetFitter(int block) const {

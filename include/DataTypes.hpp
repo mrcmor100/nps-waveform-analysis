@@ -44,13 +44,14 @@ struct AdcEventData {
 
 // A single peak, storing amplitude and time
 struct Peak {
+    int block = 0;
     float amplitude = 0;
     float time = 0;
 };
 
 // Container to store up to 12 peaks per waveform block.
 struct PeakContainer {
-    static constexpr int maxPeaks = 12;
+    static constexpr int maxPeaks = 12; // Should be set by global configuration
     int nPeaks = 0;                      // Actual number of peaks found
     int peakOverflow = 0;
     std::array<Peak, maxPeaks> peaks{};  // Storage for peaks
