@@ -86,7 +86,6 @@ int main(int argc, char* argv[]) {
         //outputFile->Write();
         //outputFile->Close();    
         // Cleanup.
-        delete chain;
     } catch (const std::exception& e) {
         std::cerr << "Error encountered: " << e.what() << "\n";
         return 1;
