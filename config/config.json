@@ -9,7 +9,7 @@
     "output_subdir": "output/",
     "input_rootfile": "nps_hms_coin_%d_%d_1_-1.root",
     "input_tree": "T",
-    "input_segments": [0, 3],
+    "input_segments": "all",
     "output_tree": "TOUT",
     "output_rootfile": "nps_hms_coin_%d_%d_1_-1_out.root"
   },

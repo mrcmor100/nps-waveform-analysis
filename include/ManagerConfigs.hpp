@@ -44,6 +44,7 @@ struct FileIOConfig {
     std::string outputPattern;
     std::string inputTree;
     std::string outputTree;
+    std::vector<int> inputSegments;
 };
 
 // A small structure for file pattern ranges.

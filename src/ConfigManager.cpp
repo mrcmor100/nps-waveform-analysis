@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <regex>
 
 ConfigManager::ConfigManager(const std::string& configPath, int run)
     : currentRun(run)
@@ -64,7 +65,38 @@ void ConfigManager::LoadFileIOConfig() {
         fileIOConfig.inputPattern  = io.at("input_rootfile").get<std::string>();
         fileIOConfig.outputPattern = io.at("output_rootfile").get<std::string>();
         fileIOConfig.inputTree     = io.at("input_tree").get<std::string>();
-        fileIOConfig.outputTree     = io.at("output_tree").get<std::string>();
+        fileIOConfig.outputTree    = io.at("output_tree").get<std::string>();
+
+        // Handle flexible input_segments
+        const auto& segments = io.at("input_segments");
+        if (segments.is_array()) {
+            for (const auto& seg : segments) {
+                fileIOConfig.inputSegments.push_back(seg.get<int>());
+            }
+        } else if (segments.is_string()) {
+            std::string segStr = segments.get<std::string>();
+            static const std::regex rangePattern(R"(^\d+-\d+$)");
+        
+            if (segStr == "all") {
+                fileIOConfig.inputSegments = {-1};  // sentinel for "all"
+            } else if (std::regex_match(segStr, rangePattern)) {
+                size_t dash = segStr.find('-');
+                int start = std::stoi(segStr.substr(0, dash));
+                int end   = std::stoi(segStr.substr(dash + 1));
+        
+                if (start > end) {
+                    std::cerr << "Warning: input_segments range start > end: " << segStr << "\n";
+                } else {
+                    for (int i = start; i <= end; ++i) {
+                        fileIOConfig.inputSegments.push_back(i);
+                    }
+                }
+            } else {
+                std::cerr << "Invalid format for input_segments: \"" << segStr
+                          << "\". Must be \"all\", a list, or a simple range like \"2-5\".\n";
+            }
+        }
+
     } catch (const std::exception &e) {
         std::cerr << "Error loading file I/O configuration: " << e.what() << std::endl;
     }

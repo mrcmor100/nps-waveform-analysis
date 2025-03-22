@@ -5,12 +5,14 @@
 #include <iostream>
 #include <algorithm>  // for std::min
 
+// TODO: Correct consturctor to load all globals / references / etc. as needed.
 DataAnalysisManager::DataAnalysisManager(TChain* chain, const FileIOConfig& fileCfg, int run)
     : chain(chain), fileConfig(fileCfg), run(run)
 {
 }
 
 void DataAnalysisManager::ProcessData() {
+    //TODO: Determine number of cores from configuration (processing_settings)
     ROOT::EnableImplicitMT(15);
     // Create the initial RDataFrame from the TChain.
     ROOT::RDataFrame df(*chain);
@@ -184,6 +186,7 @@ void DataAnalysisManager::ProcessData() {
     auto computeFitParameters = [](const std::vector<PeakContainer>& blockPeaks) -> std::vector<FitResults> {
         std::vector<FitResults> results;
         results.reserve(blockPeaks.size());
+        //TODO: Load thmeref from ReferenceManager and timerefacc from globalsManager.
         double timeref = 100.0;
         double timerefacc = 50.0;  // constant time offset adjustment
 
@@ -197,6 +200,7 @@ void DataAnalysisManager::ProcessData() {
             // Iterate over peaks in the container.
             for (int i = 0; i < pc.nPeaks; ++i) {
                 // Check "good" criteria: for example, if the absolute difference between the peak time and (timeref + timerefacc) is within 4.1.
+                // Take in and use the good lambda instead.
                 if (std::fabs(pc.peaks[i].time - timeref - timerefacc) < 4.1) {
                     res.good = true;
                     res.time = pc.peaks[i].time;
@@ -233,6 +237,7 @@ void DataAnalysisManager::ProcessData() {
     // Should likely flatten objects and store minimal arrays instead of vectors.  
     // Can follow the Ndata pattern like hcana (input).
 
+    //TODO: Use outfile pattern instead of flattened_output.root
     std::string outputPath = fileConfig.basePath + fileConfig.outputSubdir + "flattened_output.root";
     std::cout << "Writing flattened output to: " << outputPath << std::endl;
 
