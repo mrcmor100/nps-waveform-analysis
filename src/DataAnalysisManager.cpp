@@ -39,14 +39,7 @@ void DataAnalysisManager::ProcessData() {
     // Create the initial RDataFrame from the TChain.
     // if(fileManager) {
     //     chain = fileManager->LoadTChain(run);
-    // }
-    chain->Print();  // See what files are loaded
-
-    if (!chain) {
-        std::cerr << "ERROR: chain is null!" << std::endl;
-        return;
-    }
-    
+    // }    
     ROOT::RDataFrame df(*chain);
 
     // Step 1: Filter events based on tracking cuts.
