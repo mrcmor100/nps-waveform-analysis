@@ -16,7 +16,9 @@ public:
     FileManager(const FileIOConfig& fileCfg);
     TChain* LoadTChain(int run);
     TFile* CreateOutputFile(int run, int segment);
+    void ApplyConfig(int _run);
 private:
+    int run;
     FileIOConfig fileConfig;
     // Helper functions for path resolution.
     std::string ResolvePath(const std::string& pattern, int run, int segment);

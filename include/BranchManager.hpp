@@ -13,7 +13,9 @@ public:
     BranchManager(TTree* tree, const BranchConfig& branchCfg);
     ~BranchManager();
     void PrintLoadedBranches() const;
+    void ApplyConfig(int _run);
 private:
+    int run;
     TTree* tree;
     // Map to hold allocated memory for each branch.
     std::unordered_map<std::string, double*> allocatedMemory;

@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
 
         BranchManager branchManager(chain, branchCfg);
         GlobalManager globalManager(globalCfg);
-        ReferenceManager refManager(run, globalCfg, refCfg);
+        ReferenceManager refManager(refCfg);
 
         // Pass references of managers to analysisManager
         DataAnalysisManager analysisManager(run, chain,
@@ -71,11 +71,6 @@ int main(int argc, char* argv[]) {
         // Example output.
         std::cout << "Global nblocks: " << globalManager.GetNblocks() << "\n";
         branchManager.PrintLoadedBranches();
-
-        // Load reference waveforms.
-        if (!refManager.LoadReferenceWaveforms()) {
-            std::cerr << "Failed to load reference waveforms.\n";
-        }
 
         // Process data with RDataFrame:
         analysisManager.ProcessData();

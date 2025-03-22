@@ -1,7 +1,7 @@
 #include "BranchManager.hpp"
 
 BranchManager::BranchManager(TTree* tree, const BranchConfig& branchCfg)
-    : tree(tree)
+    : tree(tree), run(-1)
 {
     // For every branch defined in the config, enable it and set its address.
     for (const auto& [branchName, varName] : branchCfg.branchVarMap) {
@@ -26,4 +26,8 @@ void BranchManager::PrintLoadedBranches() const {
     for (const auto& [name, value] : namedVariables) {
         std::cout << " - " << name << std::endl;
     }
+}
+
+void BranchManager::ApplyConfig(int _run) {
+    run = _run;
 }

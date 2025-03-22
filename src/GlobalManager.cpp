@@ -1,7 +1,7 @@
 #include "GlobalManager.hpp"
 
 GlobalManager::GlobalManager(const GlobalConfig& globalCfg)
-    : config(globalCfg)
+    : config(globalCfg), run(-1)
 {
 }
 
@@ -25,7 +25,7 @@ double GlobalManager::GetPeakTolerance() const {
     return config.peakTolerance;
 }
 
-void GlobalManager::ApplyConfig(int run) {
+void GlobalManager::ApplyConfig(int _run) {
     // Start with baseline settings already loaded in globalConfig.
     GlobalConfig internalConfig = config;
 
@@ -39,5 +39,6 @@ void GlobalManager::ApplyConfig(int run) {
             // ... apply other overrides as needed.
         }
     }
+    run = _run;
     config = internalConfig;
 }

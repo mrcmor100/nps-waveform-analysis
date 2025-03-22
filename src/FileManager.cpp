@@ -3,7 +3,7 @@
 namespace fs = std::filesystem;
 
 FileManager::FileManager(const FileIOConfig& fileCfg)
-    : fileConfig(fileCfg)
+    : fileConfig(fileCfg), run(-1)
 {
 }
 
@@ -124,4 +124,9 @@ std::vector<int> FileManager::DetectSegments(int run) const {
 
     std::sort(segments.begin(), segments.end());
     return segments;
+}
+
+void FileManager::ApplyConfig(int _run) {
+    run = _run;
+    //FileManager should own Chain, Trees, and TFiles.
 }
