@@ -20,3 +20,7 @@ int GlobalManager::GetNchannel() const {
 int GlobalManager::GetNcol() const {
     return config.ncol;
 }
+
+double GlobalManager::GetPeakTolerance() const {
+    return config.peakTolerance;
+}

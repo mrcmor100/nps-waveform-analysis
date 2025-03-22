@@ -1,27 +1,52 @@
 #include "DataAnalysisManager.hpp"
+#include "GlobalManager.hpp"
+#include "ReferenceManager.hpp"
+#include "BranchManager.hpp"
+#include "FileManager.hpp"
+
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RVec.hxx>
 #include <TMath.h>
 #include <iostream>
 #include <algorithm>  // for std::min
 
-// TODO: Correct consturctor to load all globals / references / etc. as needed.
-DataAnalysisManager::DataAnalysisManager(TChain* chain, const FileIOConfig& fileCfg, int run)
-    : chain(chain), fileConfig(fileCfg), run(run)
+// Constructor: store pointers to the other managers so we can use them in processing.
+DataAnalysisManager::DataAnalysisManager(int run,
+                                         TChain* chain,
+                                         const FileManager* fileMgr,
+                                         const GlobalManager* globalMgr,
+                                         const ReferenceManager* refMgr,
+                                         const BranchManager* branchMgr)
+    : run(run), fileManager(fileMgr),
+      globalManager(globalMgr), referenceManager(refMgr), branchManager(branchMgr)
 {
 }
 
 void DataAnalysisManager::ProcessData() {
-    //TODO: Determine number of cores from configuration (processing_settings)
-    ROOT::EnableImplicitMT(15);
+    // Retrieve configuration from GlobalManager (or ProcessingSettingsManager, when implemented)
+    // For example, the number of cores and analysis version.
+    int nCores = 15;  // Default
+    double peakTolerance = 4.1;  // Default timing tolerance
+    
+    if (globalManager) {
+        //nCores = globalManager->GetNumCores();
+        peakTolerance = globalManager->GetPeakTolerance();
+    }
+    // (Optionally, verify that the waveform_analysis_version is supported.)
+
+    // Enable multi-threading using the number of cores from configuration.
+    ROOT::EnableImplicitMT(nCores);
+
     // Create the initial RDataFrame from the TChain.
+    // if(fileManager) {
+    //     chain = fileManager->LoadTChain(run);
+    // }
     ROOT::RDataFrame df(*chain);
 
     // Step 1: Filter events based on tracking cuts.
-    // This lambda filters out events with H.gtr.th, H.gtr.ph, and H.gtr.dp
     auto dfFiltered = df.Filter(
         [](double th, double ph, double dp) {
-            return TMath::Abs(th) < 0.08 && TMath::Abs(ph) < 0.04 && TMath::Abs(dp) < 10;
+            return std::fabs(th) < 0.08 && std::fabs(ph) < 0.04 && std::fabs(dp) < 10;
         },
         {"H.gtr.th", "H.gtr.ph", "H.gtr.dp"}
     );
@@ -31,7 +56,7 @@ void DataAnalysisManager::ProcessData() {
     auto dfWaveform = dfFiltered.Define("waveform_block_data_float",
         [](const ROOT::RVec<double>& waveform, int nsamp) -> std::vector<float> {
             std::vector<float> flat_data;
-            flat_data.reserve(nsamp);  // Avoid zero initialization
+            flat_data.reserve(nsamp);
             std::transform(waveform.begin(), waveform.end(), std::back_inserter(flat_data),
                            [](double x) { return static_cast<float>(x); });
             return flat_data;
@@ -57,10 +82,9 @@ void DataAnalysisManager::ProcessData() {
             for (int i = 0; i < nBlocks; ++i) {
                 size_t offset = i * DataBlockSize;
                 float block_id = flat_data[offset];
-                float n_samples = flat_data[offset + 1];  // Must be <= NumSamples
-                size_t num_to_copy = std::min<size_t>(n_samples, NumSamples); // Prevent out-of-bounds
-    
-                const float* waveform_ptr = &flat_data[offset + 2];  
+                float n_samples = flat_data[offset + 1];
+                size_t num_to_copy = std::min<size_t>(n_samples, NumSamples);
+                const float* waveform_ptr = &flat_data[offset + 2];
                 blocks.emplace_back(block_id, n_samples, waveform_ptr, num_to_copy);
             }
             return blocks;
@@ -70,19 +94,12 @@ void DataAnalysisManager::ProcessData() {
 
     auto findPeaks = [](const DataBlockFloat &block) -> PeakContainer {
         PeakContainer result;
-        // Loop over the data; note: adjust the upper bound if needed.
         for (int it = 0; it < NumSamples - 6; ++it) {
-            // Example peak-finding criteria:
-            // Check that the waveform increases from it+0 to it+2, then levels off,
-            // and then decreases after it+3. Adjust these conditions to your needs.
             if (block.data[it] < block.data[it+1] &&
                 block.data[it+1] < block.data[it+2] &&
                 block.data[it+2] <= block.data[it+3] &&
                 block.data[it+3] >= block.data[it+4] &&
                 block.data[it+4] > 0) {
-                // We found a peak; record its amplitude and time.
-                // Here we assume the peak is at it+3; you might choose a more sophisticated
-                // estimate of the peak time.
                 if (result.nPeaks < PeakContainer::maxPeaks) {
                     result.peaks[result.nPeaks].amplitude = block.data[it+3];
                     result.peaks[result.nPeaks].time = static_cast<float>(it+3);
@@ -91,7 +108,6 @@ void DataAnalysisManager::ProcessData() {
                     result.peakOverflow = 1;
                     break;
                 }
-                // Skip a few bins to avoid double-counting this peak.
                 it += 4;
             }
         }
@@ -110,9 +126,9 @@ void DataAnalysisManager::ProcessData() {
             return peaks;
         },
         {"blocks_float"}
-    );    
+    );
 
-    // Lambda to process a single ADC entry
+    // Lambda to process a single ADC entry.
     auto processAdcEntry = [](AdcResult& res,
         float pulseAmp, float pulseTime, float pulseInt,
         float pulsePed, float timemean2, int Npulse) {
@@ -126,8 +142,15 @@ void DataAnalysisManager::ProcessData() {
         }
     };
 
+    // if (globalManager) {
+    //     timemean2 = globalManager->GetTimeMean();
+    //     adcSampleDivisions = globalManager->GetAdcDivisions();
+    // }
     // Step 5: Calculate ADC parameters.
     // Here we encapsulate the ADC logic (like computing HMS time corrections,
+    // if(ReferenceManager) {
+    //     // tdcoffset = ReferenceManager->GetTdcOffset(blk?);
+    // }
     auto dfAdc = dfPeaks.Define("adc_results",
         [processAdcEntry](int NadcCounters,
                            const ROOT::RVec<double>& adcCounters,
@@ -136,32 +159,25 @@ void DataAnalysisManager::ProcessData() {
                            const ROOT::RVec<double>& adcSampPulseAmp,
                            const ROOT::RVec<double>& adcSampPulseInt,
                            const ROOT::RVec<double>& adcSampPulsePed) -> AdcEventData {
-
-            const float tdcoffset = 0.;            // The tdcoffset will be slot-by-slot
-            const float timemean2 = 150.;          // The timemean2 will be a global
-            // Converting 4ns bin over 64 samples from FPGA word and dividing to get (ns)
-            const float adcSampleDivisions = 16.0; // adcSampleDivisons should be global
+            // Pull values from GlobalManager (or set defaults)
+            float tdcoffset = 0.0;
+            float timemean2 = 150.0;
+            float adcSampleDivisions = 16.0;
             int Npulse = 0;
             AdcEventData eventData;
             eventData.adcResults.resize(NadcCounters);
     
-            // Compute the HMS correction time once, from the first ADC channel.
             eventData.HMS_corr_time = adcSampPulseTime[0] -
                                       (adcSampPulseTimeRaw[0] / adcSampleDivisions) -
                                       tdcoffset;
     
-            // Optional: Check adcCoutner is a valid slot (0-1079,2000,2001)
-            // To implement checkValidSlot
-
-            // Process every ADC entry using the lambda.
             for (int i = 0; i < NadcCounters; ++i) {
                 processAdcEntry(eventData.adcResults[i],
-                    static_cast<float>(adcSampPulseAmp[i]),
-                    static_cast<float>(adcSampPulseTime[i]),
-                    static_cast<float>(adcSampPulseInt[i]),
-                    static_cast<float>(adcSampPulsePed[i]),
-                    timemean2, Npulse
-                );
+                                static_cast<float>(adcSampPulseAmp[i]),
+                                static_cast<float>(adcSampPulseTime[i]),
+                                static_cast<float>(adcSampPulseInt[i]),
+                                static_cast<float>(adcSampPulsePed[i]),
+                                timemean2, Npulse);
                 Npulse++;
             }
             eventData.Npulse = Npulse;
@@ -176,36 +192,36 @@ void DataAnalysisManager::ProcessData() {
          "NPS.cal.fly.adcSampPed"}
     );
 
-    auto isGoodPeak = [](double peakTime, double timeref, double timerefacc) -> bool {
-        // Check if the absolute difference is within 4.1 ns.
-        // TODO - Make 4.1 a global passed in from GlobalManager.
-        // Use timeref per slot, load global timerefacc
-        return std::fabs(peakTime - timeref - timerefacc) < 4.1;
+    // Lambda for checking peak quality using the tolerance from GlobalManager.
+    auto isGoodPeak = [peakTolerance](double peakTime, double timeref, double timerefacc) -> bool {
+        return std::fabs(peakTime - timeref - timerefacc) < peakTolerance;
     };
 
-    auto computeFitParameters = [](const std::vector<PeakContainer>& blockPeaks) -> std::vector<FitResults> {
+    double timeref, timerefacc;
+    if(referenceManager) {
+        timeref = 100.0;   // placeholder; ideally obtained from ReferenceManager
+    }
+    if(globalManager) {
+        timerefacc = 50.0; // placeholder; ideally obtained from GlobalManager
+    }
+    // Lambda to compute fit parameters for each block.
+    auto computeFitParameters = [timeref, timerefacc, isGoodPeak](const std::vector<PeakContainer>& blockPeaks) -> std::vector<FitResults> {
         std::vector<FitResults> results;
         results.reserve(blockPeaks.size());
-        //TODO: Load thmeref from ReferenceManager and timerefacc from globalsManager.
-        double timeref = 100.0;
-        double timerefacc = 50.0;  // constant time offset adjustment
+
 
         for (const auto &pc : blockPeaks) {
             FitResults res;
-            // Set fallback values in case no pulse qualifies.
             res.good = false;
             res.time = timerefacc;      // fallback time
             res.amplitude = 2.0;         // fallback amplitude
-    
-            // Iterate over peaks in the container.
+
             for (int i = 0; i < pc.nPeaks; ++i) {
-                // Check "good" criteria: for example, if the absolute difference between the peak time and (timeref + timerefacc) is within 4.1.
-                // Take in and use the good lambda instead.
-                if (std::fabs(pc.peaks[i].time - timeref - timerefacc) < 4.1) {
+                if (isGoodPeak(pc.peaks[i].time, timeref, timerefacc)) {
                     res.good = true;
                     res.time = pc.peaks[i].time;
                     res.amplitude = pc.peaks[i].amplitude;
-                    break; // take the first good peak.
+                    break;
                 }
             }
             results.push_back(res);
@@ -242,5 +258,6 @@ void DataAnalysisManager::ProcessData() {
     std::cout << "Writing flattened output to: " << outputPath << std::endl;
 
     // Write the final TTree to disk. Note: Snapshot is the terminal action.
+    //if(fileManager)
     dfFitParams.Snapshot(fileConfig.outputTree, outputPath, outputBranches);
 }

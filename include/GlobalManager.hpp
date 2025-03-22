@@ -13,6 +13,7 @@ public:
     int GetNtime() const;
     int GetNchannel() const;
     int GetNcol() const;
+    double GetPeakTolerance() const;
     // You can add additional getters as needed.
 private:
     GlobalConfig config;

@@ -27,6 +27,7 @@ struct GlobalConfig {
     double ADCtomV;
     double integtopC;
     double timerefacc;
+    double peakTolerance;
 };
 
 // Branch configuration structure.

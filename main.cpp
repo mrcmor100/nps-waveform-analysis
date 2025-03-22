@@ -54,7 +54,14 @@ int main(int argc, char* argv[]) {
         BranchManager branchManager(chain, branchCfg);
         GlobalManager globalManager(globalCfg);
         ReferenceManager refManager(run, globalCfg, refCfg);
-        DataAnalysisManager analysisManager(chain, fileCfg, run);
+
+        // Pass references of managers to analysisManager
+        DataAnalysisManager analysisManager(run, chain,
+                                            &fileManager,
+                                            &globalManager,
+                                            &refManager,
+                                            &branchManager
+        );
 
         // Example output.
         std::cout << "Global nblocks: " << globalManager.GetNblocks() << "\n";
