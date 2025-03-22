@@ -16,7 +16,7 @@ DataAnalysisManager::DataAnalysisManager(int run,
                                          const GlobalManager* globalMgr,
                                          const ReferenceManager* refMgr,
                                          const BranchManager* branchMgr)
-    : run(run), fileManager(fileMgr),
+    : run(run), chain(chain), fileManager(fileMgr),
       globalManager(globalMgr), referenceManager(refMgr), branchManager(branchMgr)
 {
 }
@@ -40,6 +40,13 @@ void DataAnalysisManager::ProcessData() {
     // if(fileManager) {
     //     chain = fileManager->LoadTChain(run);
     // }
+    chain->Print();  // See what files are loaded
+
+    if (!chain) {
+        std::cerr << "ERROR: chain is null!" << std::endl;
+        return;
+    }
+    
     ROOT::RDataFrame df(*chain);
 
     // Step 1: Filter events based on tracking cuts.
