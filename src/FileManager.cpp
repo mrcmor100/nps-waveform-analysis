@@ -61,6 +61,10 @@ std::string FileManager::GetOutputFilePath(int run, int segment) {
     return fileConfig.basePath + fileConfig.outputSubdir + result;
 }
 
+TChain* FileManager::GetInputChain() const {
+    return inputChain;
+}
+
 TChain* FileManager::LoadTChain(int run) {
     TChain* chain = new TChain(fileConfig.inputTree.c_str());
     std::vector<int> segments = fileConfig.inputSegments;
@@ -128,5 +132,9 @@ std::vector<int> FileManager::DetectSegments(int run) const {
 
 void FileManager::ApplyConfig(int _run) {
     run = _run;
-    //FileManager should own Chain, Trees, and TFiles.
+    inputChain = this->LoadTChain(run);
+    outputFile = this->CreateOutputFile(run, 0);
+    // Once run is obtained, make the chain from input rootfile
+    // Use correct segments from configuration.
+    //FileManager should own Chain, Trees, and TFiles.   
 }

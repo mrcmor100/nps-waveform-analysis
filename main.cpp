@@ -53,9 +53,8 @@ int main(int argc, char* argv[]) {
 
         // Create and use managers.
         FileManager fileManager(fileCfg);
-        TChain* chain = fileManager.LoadTChain(run);
-        TFile* outputFile = fileManager.CreateOutputFile(run, 0);
-
+        fileManager.ApplyConfig(run);
+        TChain* chain = fileManager.GetInputChain();
         BranchManager branchManager(chain, branchCfg);
         GlobalManager globalManager(globalCfg);
         ReferenceManager refManager(refCfg);
@@ -84,8 +83,8 @@ int main(int argc, char* argv[]) {
             std::cout << "Interpolator not available for block " << block << "\n";
         }
 
-        outputFile->Write();
-        outputFile->Close();    
+        //outputFile->Write();
+        //outputFile->Close();    
         // Cleanup.
         delete chain;
     } catch (const std::exception& e) {
