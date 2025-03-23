@@ -59,21 +59,21 @@ void DataAnalysisManager::ProcessData() {
     );
 
     // Step 2: Convert the raw waveform data from double to float.
-    // We define a new branch "waveform_block_data_float" that converts the raw data.
-    auto dfWaveform = dfFiltered.Define("waveform_block_data_float",
+    // We define a new branch "float_waveform_data" that converts the raw data.
+    auto dfWaveform = dfFiltered.Define("float_waveform_data",
         [](const ROOT::RVec<double>& waveform, int nsamp) -> std::vector<float> {
-            std::vector<float> flat_data;
-            flat_data.reserve(nsamp);
-            std::transform(waveform.begin(), waveform.end(), std::back_inserter(flat_data),
+            std::vector<float> float_data;
+            float_data.reserve(nsamp);
+            std::transform(waveform.begin(), waveform.end(), std::back_inserter(float_data),
                            [](double x) { return static_cast<float>(x); });
-            return flat_data;
+            return float_data;
         },
         {"NPS.cal.fly.adcSampWaveform", "Ndata.NPS.cal.fly.adcSampWaveform"}
     );
 
     // Step 3a: Determine Number of Waveforms assuming DataBlockSized DataBlocks
     // Save the size for use in future steps.
-    auto dfSizeBlocks = dfWaveform.Define("n_blocks",
+    auto dfSizeBlocks = dfWaveform.Define("n_channels",
         [_DataBlockSize = DataBlockSize] (int adcSampWaveformSize) {
             return adcSampWaveformSize / static_cast<int>(_DataBlockSize);
         },
@@ -82,28 +82,29 @@ void DataAnalysisManager::ProcessData() {
 
     // Step 3b: Make DataBlockFloat structures from raw float arrays.
     // Future steps can operate directly on DataBlockFloats within each event.
-    auto dfFlattened = dfSizeBlocks.Define("blocks_float",
-        [_DataBlockSize = DataBlockSize](const std::vector<float>& flat_data, int nBlocks) -> std::vector<DataBlockFloat> {
+    auto dfFlattened = dfSizeBlocks.Define("float_blocks",
+        [_DataBlockSize = DataBlockSize](const std::vector<float>& float_data, int nBlocks) -> std::vector<DataBlockFloat> {
             std::vector<DataBlockFloat> blocks;
             blocks.reserve(nBlocks);
             for (int i = 0; i < nBlocks; ++i) {
                 size_t offset = i * _DataBlockSize;
-                float channel = flat_data[offset];
+                float channel = float_data[offset];
                 // Only Save Waveforms from the block channels.
                 // Should add a more robust method here like isBlock(channel).
                 if(channel == 2000 || channel == 2001) {continue;}
-                float n_samples = flat_data[offset + 1];
+                float n_samples = float_data[offset + 1];
                 size_t num_to_copy = std::min<size_t>(n_samples, NumSamples);
-                const float* waveform_ptr = &flat_data[offset + 2];
+                const float* waveform_ptr = &float_data[offset + 2];
                 blocks.emplace_back(channel, n_samples, waveform_ptr, num_to_copy);
             }
             return blocks;
         },
-        {"waveform_block_data_float", "n_blocks"}
+        {"float_waveform_data", "n_channels"}
     );
 
     auto findPeaks = [_NumSamples = NumSamples](const DataBlockFloat &block) -> PeakContainer {
         PeakContainer result;
+        result.block = block.block_id;
         for (int it = 0; it < _NumSamples - 6; ++it) {
             if (block.data[it] < block.data[it+1] &&
                 block.data[it+1] < block.data[it+2] &&
@@ -111,7 +112,7 @@ void DataAnalysisManager::ProcessData() {
                 block.data[it+3] >= block.data[it+4] &&
                 block.data[it+4] > 0) {
                 if (result.nPeaks < PeakContainer::maxPeaks) {
-                    result.peaks[result.nPeaks].block = block.block_id;
+                    // Load PeakContainer::maxPeaks from config
                     result.peaks[result.nPeaks].amplitude = block.data[it+3];
                     result.peaks[result.nPeaks].time = static_cast<float>(it+3);
                     result.nPeaks++;
@@ -136,7 +137,7 @@ void DataAnalysisManager::ProcessData() {
             }
             return peaks;
         },
-        {"blocks_float"}
+        {"float_blocks"}
     );
 
     // Lambda to process a single ADC entry.
@@ -155,7 +156,7 @@ void DataAnalysisManager::ProcessData() {
 
     // Step 5: Calculate ADC parameters.
     // Here we encapsulate the ADC logic (like computing HMS time corrections,
-    auto dfAdc = dfPeaks.Define("adc_results",
+    auto dfAdc = dfPeaks.Define("adc_results_blocks",
         [_processAdcEntry = processAdcEntry,
          _tdcoffset = cfg.tdcOffsets,
          _adcSampleDivisions = adcSampleDivisions,
@@ -221,7 +222,7 @@ void DataAnalysisManager::ProcessData() {
             res.amplitude = 2.0;         // fallback amplitude
 
             for (int i = 0; i < pc.nPeaks; ++i) {
-                if (_isGoodPeak(pc.peaks[i].block, pc.peaks[i].time)) {
+                if (_isGoodPeak(pc.block, pc.peaks[i].time)) {
                     res.good = true;
                     res.time = pc.peaks[i].time;
                     res.amplitude = pc.peaks[i].amplitude;
@@ -235,7 +236,7 @@ void DataAnalysisManager::ProcessData() {
 
     // Step 6: Determine Fits for each peak based on time, amplitude and 'goodness'
     // Perform for each Peak within each DataBlockFloat, which is stored in block_peaks.
-    auto dfFitParams = dfAdc.Define("fit_results", computeFitParameters, {"block_peaks"});
+    auto dfFitParams = dfAdc.Define("fit_results_blocks", computeFitParameters, {"block_peaks"});
 
     // Step 7: Fit the actual data using Minuit2 and the relevant branches!
     // First I need to check the computeFitParameters and load config correctly.
@@ -249,9 +250,9 @@ void DataAnalysisManager::ProcessData() {
         "H.gtr.th",
         "H.gtr.ph",
         "H.gtr.dp",
-        "adc_results",
+        "adc_results_blocks",
         "block_peaks",
-        "fit_results"
+        "fit_results_blocks"
     };
 
     // Should likely flatten objects and store minimal arrays instead of vectors.  
