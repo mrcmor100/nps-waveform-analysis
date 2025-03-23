@@ -18,6 +18,11 @@ public:
 
     const ROOT::Math::Interpolator* GetInterpolator(int block) const;
     TF1* GetFitter(int block) const;
+    
+    std::map<int,double> GetTimeRefs() const;
+    std::map<int,double> GettdcOffsets() const;
+    double GetTimeMean() const;
+    double GetTimeMean2() const;
     void ApplyConfig(int _run);
 private:
     RunType runType;
@@ -26,6 +31,9 @@ private:
     bool LoadReferenceWaveforms();
     // Maps to store interpolators and fitters.
     std::map<int, std::unique_ptr<ROOT::Math::Interpolator>> interpolators;
+    // TODO: Get 
+    std::map<int,double> timeRefs;
+    std::map<int,double> tdcOffsets;
     std::map<int, std::unique_ptr<TF1>> fitters;
 };
 

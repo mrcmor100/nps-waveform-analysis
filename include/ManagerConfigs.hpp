@@ -95,6 +95,8 @@ struct ChannelType {
 // specific to the reference manager.
 struct ReferenceConfig {
     // Waveform file patterns and default.
+    float timemean;
+    float timemean2;
     std::vector<FilePattern> waveformPatterns;
     std::vector<ChannelType> ChannelTypes;
     std::string waveformDefault;

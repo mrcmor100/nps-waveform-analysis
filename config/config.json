@@ -66,6 +66,8 @@
       { "elastic_range": [6171, 6183], "prod_range": [6184, 7500],
         "path": "reference_waveforms/RWF_6171_6183_Setting.txt" }
     ],
+    "timemean": 50.0,
+    "timemean2": 150.0,
     "channels": [
       { "name": "blocks", "range": [0,1079]},
       { "name": "scintillators", "range": [2000,2001] } 

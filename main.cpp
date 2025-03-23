@@ -4,6 +4,7 @@
 #include "TSystem.h"
 #include "ConfigManager.hpp"
 #include "FileManager.hpp"
+#include "ApplicationManager.hpp"
 #include "BranchManager.hpp"
 #include "GlobalManager.hpp"
 #include "ReferenceManager.hpp"
@@ -52,19 +53,28 @@ int main(int argc, char* argv[]) {
         std::cout << "Utilizing " << applicationCfg.nProcessors << " processors\n";
 
         // Create and use managers.
+        ApplicationManager applicationManager(applicationCfg);
+        applicationManager.ApplyConfig(run);
+
         FileManager fileManager(fileCfg);
         fileManager.ApplyConfig(run);
         TChain* chain = fileManager.GetInputChain();
+
         BranchManager branchManager(chain, branchCfg);
+        branchManager.ApplyConfig(run);
+
         GlobalManager globalManager(globalCfg);
+        globalManager.ApplyConfig(run);
+
         ReferenceManager refManager(refCfg);
+        refManager.ApplyConfig(run);
 
         // Pass references of managers to analysisManager
-        DataAnalysisManager analysisManager(run, chain,
-                                            &fileManager,
+        DataAnalysisManager analysisManager(&fileManager,
                                             &globalManager,
                                             &refManager,
-                                            &branchManager
+                                            &branchManager,
+                                            &applicationManager
         );
 
         // Example output.

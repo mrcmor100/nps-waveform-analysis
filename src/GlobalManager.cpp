@@ -9,6 +9,10 @@ int GlobalManager::GetNblocks() const {
     return config.nblocks;
 }
 
+double GlobalManager::GetTimeRefAcc() const {
+    return config.timerefacc;
+}
+
 int GlobalManager::GetNtime() const {
     return config.ntime;
 }

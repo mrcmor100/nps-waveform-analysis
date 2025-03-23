@@ -126,6 +126,9 @@ void ConfigManager::LoadReferenceConfig() {
         std::vector<std::pair<int, int>> allProdRanges;
         std::vector<std::pair<int, int>> allElasticRanges;
 
+        referenceConfig.timemean = wfFiles.at("timemean").get<float>();
+        referenceConfig.timemean2 = wfFiles.at("timemean2").get<float>();
+
         for (const auto& pat : wfFiles.at("patterns")) {
             FilePattern fp;
             fp.rangeStart   = pat.at("prod_range")[0].get<int>();
