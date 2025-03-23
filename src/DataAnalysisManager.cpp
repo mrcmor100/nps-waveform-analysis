@@ -11,20 +11,19 @@
 #include <algorithm>  // for std::min
 
 // Constructor: store pointers to the other managers so we can use them in processing.
-DataAnalysisManager::DataAnalysisManager(int run,
-                                         TChain* chain,
-                                         const FileManager* fileMgr,
+DataAnalysisManager::DataAnalysisManager(const FileManager* fileMgr,
                                          const GlobalManager* globalMgr,
                                          const ReferenceManager* refMgr,
                                          const BranchManager* branchMgr,
                                          const ApplicationManager* appMgr)
-    : run(run), chain(chain), fileManager(fileMgr),
-      globalManager(globalMgr), referenceManager(refMgr), branchManager(branchMgr,
-      applicationManager(applicationMgr) )
+    : run(-1), chain(nullptr), fileManager(fileMgr), globalManager(globalMgr), 
+      referenceManager(refMgr), branchManager(branchMgr),
+      applicationManager(appMgr)
 {
 }
 
-void DataAnalysisManager::SetupParameters() const {
+void DataAnalysisManager::SetupParameters() {
+    chain = fileManager->GetInputChain();
     if(applicationManager) {
         cfg.nCores = applicationManager->GetNProcs();
     }
@@ -41,10 +40,11 @@ void DataAnalysisManager::SetupParameters() const {
 }
 
 void DataAnalysisManager::ProcessData() {
+    this->SetupParameters();
     // Check WaveformAnalysis Version
 
     // Enable multi-threading using the number of cores from configuration.
-    ROOT::EnableImplicitMT(nCores);
+    ROOT::EnableImplicitMT(cfg.nCores);
 
     // Create the initial RDataFrame from the TChain.
     ROOT::RDataFrame df(*chain);
@@ -137,7 +137,7 @@ void DataAnalysisManager::ProcessData() {
     );
 
     // Lambda to process a single ADC entry.
-    auto processAdcEntry = [_timemean2 = timemean2](AdcResult& res,
+    auto processAdcEntry = [_timemean2 = cfg.timemean2](AdcResult& res,
         float pulseAmp, float pulseTime, float pulseInt,
         float pulsePed, int Npulse) {
         // If it's the first pulse or the new pulse is closer to the reference time, update the result.
@@ -154,9 +154,9 @@ void DataAnalysisManager::ProcessData() {
     // Here we encapsulate the ADC logic (like computing HMS time corrections,
     auto dfAdc = dfPeaks.Define("adc_results",
         [_processAdcEntry = processAdcEntry,
-         _tdcoffset = tdcoffset,
+         _tdcoffset = cfg.tdcOffsets,
          _adcSampleDivisions = adcSampleDivisions,
-         timemean2 = timemean2,](int NadcCounters,
+         timemean2 = cfg.timemean2](int NadcCounters,
                            const ROOT::RVec<double>& adcCounters,
                            const ROOT::RVec<double>& adcSampPulseTime,
                            const ROOT::RVec<double>& adcSampPulseTimeRaw,
@@ -169,10 +169,20 @@ void DataAnalysisManager::ProcessData() {
             eventData.adcResults.resize(NadcCounters);
 
             // Skip if adcCounter is for Scintillators
-    
+            int counter = adcCounters[0];
+            auto it = _tdcoffset.find(counter);
+            double offset = 0.0;
+            
+            if (it != _tdcoffset.end()) {
+                offset = it->second;
+            } else {
+                std::cerr << "Warning: Missing tdcOffset for adcCounter " << counter << " — using 0.0\n";
+            }
+            
             eventData.HMS_corr_time = adcSampPulseTime[0] -
                                       (adcSampPulseTimeRaw[0] / _adcSampleDivisions) -
-                                      _tdcoffset[adcCounters[0]];
+                                      offset;
+            
                                       // The _tdcoffset for adcCounters[0],
                                       // IDK what that is.
                                       // Maybe the block that fired off the event?
@@ -199,15 +209,21 @@ void DataAnalysisManager::ProcessData() {
     );
 
     // Lambda for checking peak quality using the tolerance from GlobalManager.
-    auto isGoodPeak = [_timeref = timeref, 
-                       _peakTolerance = peakTolerance,
-                       _timerefacc = timerefacc](int block_number, double peakTime) -> bool {
-        return std::fabs(peakTime - _timeref[block_number] - _timerefacc) < _peakTolerance;
+    auto isGoodPeak = [_timeref = cfg.timeRefs, 
+                       _peakTolerance = cfg.peakTolerance,
+                       _timerefacc = cfg.timerefacc](int block_number, double peakTime) -> bool {
+        auto it = _timeref.find(block_number);
+        if (it != _timeref.end()) {
+            return std::fabs(peakTime - it->second - _timerefacc) < _peakTolerance;
+        } else {
+            std::cerr << "Warning: Missing timeref for block " << block_number << " — using 0.0\n";
+            return std::fabs(peakTime - 0.0 - _timerefacc) < _peakTolerance;  // fallback
+        }
     };
 
     // Lambda to compute fit parameters for each block.
     auto computeFitParameters = [_isGoodPeak = isGoodPeak,
-                                 timerefacc = timerefacc]
+                                 timerefacc = cfg.timerefacc]
             (const std::vector<PeakContainer>& blockPeaks) -> std::vector<FitResults> {
         std::vector<FitResults> results;
         results.reserve(blockPeaks.size());

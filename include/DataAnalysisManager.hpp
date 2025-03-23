@@ -14,6 +14,7 @@ class GlobalManager;
 class ReferenceManager;
 class BranchManager;
 class FileManager;
+class ApplicationManager;
 
 struct ProcessingConfig {
     int nCores = -1;
@@ -28,17 +29,16 @@ struct ProcessingConfig {
 class DataAnalysisManager {
 public:
     // The constructor now takes pointers (or const references) to the other managers.
-    DataAnalysisManager(int run,
-                        TChain* chain,
-                        const FileManager* fileMgr,
+    DataAnalysisManager(const FileManager* fileMgr,
                         const GlobalManager* globalMgr,
                         const ReferenceManager* refMgr,
-                        const BranchManager* branchMgr);
+                        const BranchManager* branchMgr,
+                        const ApplicationManager* applicationMgr);
     void ProcessData();
 
 private:
 
-    void SetupParameters() const;
+    void SetupParameters();
     
     TChain* chain;
     int run;

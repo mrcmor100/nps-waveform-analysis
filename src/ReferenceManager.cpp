@@ -155,19 +155,19 @@ const ROOT::Math::Interpolator* ReferenceManager::GetInterpolator(int block) con
     return (it != interpolators.end()) ? it->second.get() : nullptr;
 }
 
-std::map<int,double> GetTimeRefs() const {
+std::map<int,double> ReferenceManager::GetTimeRefs() const {
     return timeRefs;
 }
 
-std::map<int,double> GettdcOffsets() const {
+std::map<int,double> ReferenceManager::GettdcOffsets() const {
     return tdcOffsets;
 }
 
-double GetTimeMean() const {
+double ReferenceManager::GetTimeMean() const {
     return refConfig.timemean;
 }
 
-double GetTimeMean2() const {
+double ReferenceManager::GetTimeMean2() const {
     return refConfig.timemean2;
 }
 
