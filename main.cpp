@@ -55,12 +55,19 @@ int main(int argc, char* argv[]) {
         // Create and use managers.
         ApplicationManager applicationManager(applicationCfg);
         applicationManager.ApplyConfig(run);
+
         FileManager fileManager(fileCfg);
         fileManager.ApplyConfig(run);
         TChain* chain = fileManager.GetInputChain();
+
         BranchManager branchManager(chain, branchCfg);
+        branchManager.ApplyConfig(run);
+
         GlobalManager globalManager(globalCfg);
+        globalManager.ApplyConfig(run);
+
         ReferenceManager refManager(refCfg);
+        refManager.ApplyConfig(run);
 
         // Pass references of managers to analysisManager
         DataAnalysisManager analysisManager(&fileManager,

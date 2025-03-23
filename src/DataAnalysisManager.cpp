@@ -88,11 +88,14 @@ void DataAnalysisManager::ProcessData() {
             blocks.reserve(nBlocks);
             for (int i = 0; i < nBlocks; ++i) {
                 size_t offset = i * _DataBlockSize;
-                float block_id = flat_data[offset];
+                float channel = flat_data[offset];
+                // Only Save Waveforms from the block channels.
+                // Should add a more robust method here like isBlock(channel).
+                if(channel == 2000 || channel == 2001) {continue;}
                 float n_samples = flat_data[offset + 1];
                 size_t num_to_copy = std::min<size_t>(n_samples, NumSamples);
                 const float* waveform_ptr = &flat_data[offset + 2];
-                blocks.emplace_back(block_id, n_samples, waveform_ptr, num_to_copy);
+                blocks.emplace_back(channel, n_samples, waveform_ptr, num_to_copy);
             }
             return blocks;
         },
@@ -167,21 +170,10 @@ void DataAnalysisManager::ProcessData() {
             int Npulse = 0;
             AdcEventData eventData;
             eventData.adcResults.resize(NadcCounters);
-
-            // Skip if adcCounter is for Scintillators
-            int counter = adcCounters[0];
-            auto it = _tdcoffset.find(counter);
-            double offset = 0.0;
-            
-            if (it != _tdcoffset.end()) {
-                offset = it->second;
-            } else {
-                std::cerr << "Warning: Missing tdcOffset for adcCounter " << counter << " — using 0.0\n";
-            }
             
             eventData.HMS_corr_time = adcSampPulseTime[0] -
                                       (adcSampPulseTimeRaw[0] / _adcSampleDivisions) -
-                                      offset;
+                                      _tdcoffset.at(adcCounters[0]);
             
                                       // The _tdcoffset for adcCounters[0],
                                       // IDK what that is.
@@ -212,13 +204,7 @@ void DataAnalysisManager::ProcessData() {
     auto isGoodPeak = [_timeref = cfg.timeRefs, 
                        _peakTolerance = cfg.peakTolerance,
                        _timerefacc = cfg.timerefacc](int block_number, double peakTime) -> bool {
-        auto it = _timeref.find(block_number);
-        if (it != _timeref.end()) {
-            return std::fabs(peakTime - it->second - _timerefacc) < _peakTolerance;
-        } else {
-            std::cerr << "Warning: Missing timeref for block " << block_number << " — using 0.0\n";
-            return std::fabs(peakTime - 0.0 - _timerefacc) < _peakTolerance;  // fallback
-        }
+        return std::fabs(peakTime - _timeref.at(block_number) - _timerefacc) < _peakTolerance;
     };
 
     // Lambda to compute fit parameters for each block.
