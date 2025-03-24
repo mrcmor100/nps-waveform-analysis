@@ -102,7 +102,19 @@ void DataAnalysisManager::ProcessData() {
         {"float_waveform_data", "n_channels"}
     );
 
-    auto findPeaks = [_NumSamples = NumSamples](const DataBlockFloat &block) -> PeakContainer {
+    // Lambda for checking peak quality using the tolerance from GlobalManager.
+    auto isGoodPeak = [_timeref = cfg.timeRefs, 
+        _peakTolerance = cfg.peakTolerance,
+        _timerefacc = cfg.timerefacc](int block_number, double peakTime) -> bool {
+        return std::fabs(peakTime - _timeref.at(block_number) - _timerefacc) < _peakTolerance;
+    };
+
+    auto findPeaks = [_isGoodPeak = isGoodPeak,
+                      _NumSamples = NumSamples,
+                      _timeref = cfg.timeRefs,
+                      _peakTolerance = cfg.peakTolerance,
+                      _timerefacc = cfg.timerefacc]
+        (const DataBlockFloat &block) -> PeakContainer {
         PeakContainer result;
         result.block = block.block_id;
         for (int it = 0; it < _NumSamples - 6; ++it) {
@@ -115,6 +127,8 @@ void DataAnalysisManager::ProcessData() {
                     // Load PeakContainer::maxPeaks from config
                     result.peaks[result.nPeaks].amplitude = block.data[it+3];
                     result.peaks[result.nPeaks].time = static_cast<float>(it+3);
+                    result.peaks[result.nPeaks].good = _isGoodPeak(block.block_id, 
+                        static_cast<float>(it+3));
                     result.nPeaks++;
                 } else {
                     result.peakOverflow = 1;
@@ -201,44 +215,77 @@ void DataAnalysisManager::ProcessData() {
          "NPS.cal.fly.adcSampPed"}
     );
 
-    // Lambda for checking peak quality using the tolerance from GlobalManager.
-    auto isGoodPeak = [_timeref = cfg.timeRefs, 
-                       _peakTolerance = cfg.peakTolerance,
-                       _timerefacc = cfg.timerefacc](int block_number, double peakTime) -> bool {
-        return std::fabs(peakTime - _timeref.at(block_number) - _timerefacc) < _peakTolerance;
-    };
+    auto computeFitParameters = [_timeref = cfg.timeRefs,
+                                _timerefacc = cfg.timerefacc]
+            (const PeakContainer& pc) -> BlockFitParameters {
+        
+        BlockFitParameters params;
+        
+        // Initialize the pedestal parameter (similar to setting parameter 1 in the old code)
+        params.block_pedestal.pedestal = 0.;
+        params.block_pedestal.ped_lower_limit = -100.;
+        params.block_pedestal.ped_upper_limit = 100.;
 
-    // Lambda to compute fit parameters for each block.
-    auto computeFitParameters = [_isGoodPeak = isGoodPeak,
-                                 timerefacc = cfg.timerefacc]
-            (const std::vector<PeakContainer>& blockPeaks) -> std::vector<FitResults> {
-        std::vector<FitResults> results;
-        results.reserve(blockPeaks.size());
-
-        for (const auto &pc : blockPeaks) {
-            FitResults res;
-            res.good = false;
-            res.time = 0.;      // fallback time
-            res.amplitude = 2.0;         // fallback amplitude
-
-            for (int i = 0; i < pc.nPeaks; ++i) {
-                if (_isGoodPeak(pc.block, pc.peaks[i].time)) {
-                    res.good = true;
-                    res.time = pc.peaks[i].time;
-                    res.amplitude = pc.peaks[i].amplitude;
-                    break;
-                }
-            }
-            results.push_back(res);
+        // Set a default state for the block
+        params.good = false;
+        // Optionally, initialize all peak parameters with safe defaults.
+        if(pc.nPeaks == 0) {
+            params.peak_parameters[0].time = _timerefacc;
+            params.peak_parameters[0].time_lower_limit = _timerefacc - 4;
+            params.peak_parameters[0].time_upper_limit = _timerefacc + 4;
+            params.peak_parameters[0].amplitude = 2.0;
+            params.peak_parameters[0].amplitude_lower_limit = 0.05;
+            params.peak_parameters[0].amplitude_upper_limit = 10;
         }
-        return results;
+        
+        // Process peaks in the block and fill the first good peak parameter.
+        // (Adapt this logic if you want to process more than one peak per block.)
+        for (int i = 0; i < pc.nPeaks; ++i) {
+            if (pc.peaks[i].good) {
+                params.good = true;
+                // Compute the corrected time relative to the time reference.
+                double correctedTime = pc.peaks[i].time - _timeref.at(pc.block);
+                params.peak_parameters[i].time = correctedTime;
+                params.peak_parameters[i].time_lower_limit = correctedTime - 3;
+                params.peak_parameters[i].time_upper_limit = correctedTime + 3;
+                
+                double amplitude = pc.peaks[i].amplitude;
+                params.peak_parameters[i].amplitude = amplitude;
+                params.peak_parameters[i].amplitude_lower_limit = amplitude * 0.2;
+                params.peak_parameters[i].amplitude_upper_limit = amplitude * 3;
+            }
+        }
+        if(params.good == false) {
+            int lp  = pc.nPeaks -1; // TODO: Fix this to be nPeaks, but causes...
+            // Stack Smashing currently if nPeaks is PeakContainer::maxPeaks.
+            // Still want to try and fit a pulse in time.
+            // Replace the last peaks attempted fit?
+            params.peak_parameters[lp].time = _timerefacc;
+            params.peak_parameters[lp].time_lower_limit = _timerefacc - 4;
+            params.peak_parameters[lp].time_upper_limit = _timerefacc + 4;
+            params.peak_parameters[lp].amplitude = 2.0;
+            params.peak_parameters[lp].amplitude_lower_limit = 0.05;
+            params.peak_parameters[lp].amplitude_upper_limit = 10;
+        }
+        return params;
     };
 
     // Step 6: Determine Fits for each peak based on time, amplitude and 'goodness'
     // Perform for each Peak within each DataBlockFloat, which is stored in block_peaks.
-    auto dfFitParams = dfAdc.Define("fit_results_blocks", computeFitParameters, {"block_peaks"});
+    auto dfFitParams = dfAdc.Define("fit_results_blocks", 
+        [_computeFitParameters = computeFitParameters] (const std::vector<PeakContainer>& blockPeaks) -> std::vector<BlockFitParameters> {
+            std::vector<BlockFitParameters> results;
+            results.reserve(blockPeaks.size());
+            for (const auto &pc : blockPeaks) {
+                results.push_back(_computeFitParameters(pc));
+            }
+            return results;
+        },
+        {"block_peaks"}
+    );
 
-    // Step 7: Fit the actual data using Minuit2 and the relevant branches!
+    // Step 7a: Determine errors for samples for block
+    // Step 7b: Fit the actual data using Minuit2 and the relevant branches!
     // First I need to check the computeFitParameters and load config correctly.
     // OPTIONAL: Instead of use CPU, stop here and use GPUs for fitting.
 

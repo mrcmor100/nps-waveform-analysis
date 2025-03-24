@@ -45,7 +45,8 @@ struct AdcEventData {
 // A single peak, storing amplitude and time
 struct Peak {
     float amplitude = 0;
-    float time = 0;
+    float time = 0; 
+    bool good = false;
 };
 
 // Container to store up to 12 peaks per waveform block.
@@ -58,22 +59,44 @@ struct PeakContainer {
 };
 
 // Structure to hold a single fit parameter and its limits
-struct FitParameter {
-    double value;
-    double lower_limit;
-    double upper_limit;
+struct PeakFitParameter {
+    double amplitude = -1.;
+    double amplitude_lower_limit = -1.;
+    double amplitude_upper_limit = -1.;
+    double time = -1.;
+    double time_lower_limit = -1.;
+    double time_upper_limit = -1.;
 };
 
-struct FitResults {
+struct PedestalFitParameter {
+    double pedestal = -50.;
+    double ped_lower_limit = -60.;
+    double ped_upper_limit = -40.;
+};
+
+struct BlockFitParameters {
+    // Parameters indexed from 1 up to 2*maxPulses (for peaks)
+    // plus parameter 1 which is a baseline / pedestal
+    PedestalFitParameter block_pedestal; // Fit limits for baseline
+    // Maybe I shouldn't use PeakContainer::maxPeaks size?
+    std::array<PeakFitParameter,PeakContainer::maxPeaks> peak_parameters;
+    // Good flag indicating whether the "good" peak condition was met.
+    bool good = false;
+};
+
+struct PeakFitResults {
     bool good;       // true if a good peak is found
     double time;     // selected pulse time (or fallback)
     double amplitude; // selected pulse amplitude (or fallback)
 };
 
-struct BlockFitParameters {
-    // Parameters indexed from 1 up to 2*maxPulses (for peaks)
-    // plus parameter 1 which is a baseline/pedestal
-    std::vector<FitParameter> parameters;
-    // Good flag indicating whether the "good" peak condition was met.
-    bool good;
+struct PedestalFitResults {
+    double ped_value;
+};
+
+struct BlockFitResults {
+    PedestalFitResults ped_res;
+    std::array<PeakFitResults,PeakContainer::maxPeaks> peak_res;
+    double time_to_fit; // Or high resolution clock.
+    bool good_fit;
 };

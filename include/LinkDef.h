@@ -14,4 +14,8 @@
 #pragma link C++ class std::vector<FitResults>+;
 #pragma link C++ class std::vector<AdcResult>+;
 #pragma link C++ class AdcEventData+;
+#pragma link C++ class BlockFitParameters+;
+#pragma link C++ class PeakFitParameter+;
+#pragma link C++ class PedestalFitParameter+;
+#pragma link C++ class std::vector<BlockFitParameters>+;
 #endif
