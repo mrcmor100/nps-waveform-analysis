@@ -104,8 +104,10 @@ void DataAnalysisManager::ProcessData() {
 
     // Lambda for checking peak quality using the tolerance from GlobalManager.
     auto isGoodPeak = [_timeref = cfg.timeRefs, 
-        _peakTolerance = cfg.peakTolerance,
-        _timerefacc = cfg.timerefacc](int block_number, double peakTime) -> bool {
+                       _peakTolerance = cfg.peakTolerance,
+                       _timerefacc = cfg.timerefacc]
+        (int block_number, float peakTime) -> bool {
+        //std::cout << peakTime << " " << _timeref.at(block_number) << " " <<_timerefacc << " " << _peakTolerance << '\n';
         return std::fabs(peakTime - _timeref.at(block_number) - _timerefacc) < _peakTolerance;
     };
 
@@ -128,7 +130,7 @@ void DataAnalysisManager::ProcessData() {
                     result.peaks[result.nPeaks].amplitude = block.data[it+3];
                     result.peaks[result.nPeaks].time = static_cast<float>(it+3);
                     result.peaks[result.nPeaks].good = _isGoodPeak(block.block_id, 
-                        static_cast<float>(it+3));
+                        4.*static_cast<float>(it+3));
                     result.nPeaks++;
                 } else {
                     result.peakOverflow = 1;
@@ -299,7 +301,8 @@ void DataAnalysisManager::ProcessData() {
         "H.gtr.dp",
         "adc_results_blocks",
         "block_peaks",
-        "fit_results_blocks"
+        "fit_results_blocks",
+        "float_blocks"
     };
 
     // Should likely flatten objects and store minimal arrays instead of vectors.  

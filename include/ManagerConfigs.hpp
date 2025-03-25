@@ -39,7 +39,7 @@ struct GlobalConfig {
     int nslots;
     double ADCtomV;
     double integtopC;
-    double timerefacc;
+    float timerefacc;
     double peakTolerance;
 
     std::vector<GlobalRunOverride> runOverrides;

@@ -104,7 +104,7 @@ bool ReferenceManager::LoadReferenceWaveforms() {
 
             std::istringstream iss(line);
             int block;
-            double timeRef, tdcOffset;
+            float timeRef, tdcOffset;
             char comma;
             iss >> block >> timeRef >> tdcOffset;
 
@@ -155,11 +155,11 @@ const ROOT::Math::Interpolator* ReferenceManager::GetInterpolator(int block) con
     return (it != interpolators.end()) ? it->second.get() : nullptr;
 }
 
-std::map<int,double> ReferenceManager::GetTimeRefs() const {
+std::map<int,float> ReferenceManager::GetTimeRefs() const {
     return timeRefs;
 }
 
-std::map<int,double> ReferenceManager::GettdcOffsets() const {
+std::map<int,float> ReferenceManager::GettdcOffsets() const {
     return tdcOffsets;
 }
 

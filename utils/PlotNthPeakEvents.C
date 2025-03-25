@@ -58,10 +58,11 @@ void PlotWaveformWithPeaks(
     for (int i = 0; i < NumSamples; i++) {
         gr->AddPoint(i, db.data[i]);
     }
-
+    bool HasAnyGood = false;
     for (int i = 0; i < pc.nPeaks && i < PeakContainer::maxPeaks; i++) {
         const auto &peak = pc.peaks[i];
         if (peak.good) {
+            HasAnyGood = true;
             gr_good_peaks->AddPoint(peak.time, peak.amplitude);
         } else {
             gr_all_peaks->AddPoint(peak.time, peak.amplitude);
@@ -95,7 +96,9 @@ void PlotWaveformWithPeaks(
     legend->AddEntry(gr_all_peaks, "Other Peaks", "p");
     legend->Draw();
 
-    c->SaveAs(output_path.c_str());
+    if(HasAnyGood) {
+        c->SaveAs(output_path.c_str());
+    }
 
     delete c;
     delete gr;

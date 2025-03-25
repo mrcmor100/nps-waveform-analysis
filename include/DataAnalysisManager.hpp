@@ -18,12 +18,12 @@ class ApplicationManager;
 
 struct ProcessingConfig {
     int nCores = -1;
-    double peakTolerance = 0.;
+    float peakTolerance = 0.;
     float timemean = 0.0f;
     float timemean2 = 0.0f;
     float timerefacc = 0.0f;
-    std::map<int,double> tdcOffsets;
-    std::map<int,double> timeRefs;
+    std::map<int,float> tdcOffsets;
+    std::map<int,float> timeRefs;
 };
 
 class DataAnalysisManager {

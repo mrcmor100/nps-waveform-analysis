@@ -25,7 +25,7 @@ int GlobalManager::GetNcol() const {
     return config.ncol;
 }
 
-double GlobalManager::GetPeakTolerance() const {
+float GlobalManager::GetPeakTolerance() const {
     return config.peakTolerance;
 }
 

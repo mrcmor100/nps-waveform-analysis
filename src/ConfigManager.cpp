@@ -52,7 +52,7 @@ void ConfigManager::LoadGlobalConfig() {
         globalConfig.ADCtomV    = g.at("ADCtomV").get<double>();
         globalConfig.integtopC  = g.at("integtopC").get<double>();
         globalConfig.timerefacc = g.at("timerefacc").get<double>();
-        globalConfig.peakTolerance = g.at("peak_tolerance").get<double>();
+        globalConfig.peakTolerance = g.at("peak_tolerance").get<float>();
     } catch (const std::exception &e) {
         throw std::runtime_error("Error loading global configuration: " + std::string(e.what()));
     }
