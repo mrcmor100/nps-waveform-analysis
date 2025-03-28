@@ -1,10 +1,12 @@
 #include "DataAnalysisManager.hpp"
+#include "WaveformFitter.hpp"
 #include "GlobalManager.hpp"
 #include "ApplicationManager.hpp"
 #include "ReferenceManager.hpp"
 #include "BranchManager.hpp"
 #include "FileManager.hpp"
 
+#include "Math/Interpolator.h"
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RVec.hxx>
 #include <iostream>
@@ -227,6 +229,8 @@ void DataAnalysisManager::ProcessData() {
         params.block_pedestal.pedestal = 0.;
         params.block_pedestal.ped_lower_limit = -100.;
         params.block_pedestal.ped_upper_limit = 100.;
+        params.nPeaks = pc.nPeaks;
+        params.block = pc.block;
 
         // Set a default state for the block
         params.good = false;
@@ -274,7 +278,7 @@ void DataAnalysisManager::ProcessData() {
 
     // Step 6: Determine Fits for each peak based on time, amplitude and 'goodness'
     // Perform for each Peak within each DataBlockFloat, which is stored in block_peaks.
-    auto dfFitParams = dfAdc.Define("fit_results_blocks", 
+    auto dfFitParams = dfAdc.Define("fit_params_blocks", 
         [_computeFitParameters = computeFitParameters] (const std::vector<PeakContainer>& blockPeaks) -> std::vector<BlockFitParameters> {
             std::vector<BlockFitParameters> results;
             results.reserve(blockPeaks.size());
@@ -285,7 +289,9 @@ void DataAnalysisManager::ProcessData() {
         },
         {"block_peaks"}
     );
-    
+
+    // Step 7a: Create a histogram from a block to use the TH1::Fit method
+    // OPTIONAL: Instead of use CPU, stop here and use GPUs for fitting.
     auto makeHistogramFromBlock = [](const DataBlockFloat& block, const std::string& name) 
         -> std::shared_ptr<TH1F> {
         auto hist = std::make_shared<TH1F>(
@@ -314,12 +320,56 @@ void DataAnalysisManager::ProcessData() {
             return results;
         },
         {"float_blocks"}
-    );    
+    );
 
-    // Step 7a: Determine errors for samples for block
-    // Step 7b: Fit the actual data using Minuit2 and the relevant branches!
-    // First I need to check the computeFitParameters and load config correctly.
-    // OPTIONAL: Instead of use CPU, stop here and use GPUs for fitting.
+    // Step 7b: Setup a fit function with the fit_params_blocks.
+    // Make sure to save real time required to fit, and store relevant metadata.
+    //  Extract chisq, peaks, etc.
+    auto makeTF1FromFitParams = [this](const BlockFitParameters& fitParams)
+    -> TF1*
+    {
+        int blockId = fitParams.block;
+        const ROOT::Math::Interpolator* interp = referenceManager->GetInterpolator(blockId);
+        WaveformFitter fitter = WaveformFitter(interp, 1., 109.);
+        return fitter.CreateTF1ForBlock(fitParams);
+    };
+
+
+    auto dfTF1Blocks = dfHistograms.Define("tf1_blocks",
+        [makeTF1FromFitParams](const std::vector<BlockFitParameters>& fitParamsVec)
+            -> std::vector<TF1*>
+        {
+            std::vector<TF1*> tf1Vec;
+            tf1Vec.reserve(fitParamsVec.size());
+    
+            for (size_t i = 0; i < fitParamsVec.size(); ++i)
+            {
+                tf1Vec.emplace_back(makeTF1FromFitParams(fitParamsVec[i]));
+            }
+    
+            return tf1Vec;
+        },
+        {"fit_params_blocks"}
+    );
+
+    auto dfFitBlocks = dfTF1Blocks.Define("the_fit_applied",
+        [](const std::vector<TF1*>& tf1Vec,
+           const std::vector<std::shared_ptr<TH1F>> histVec)
+            -> TF1*
+        {
+            if (tf1Vec.empty() || histVec.empty() || !tf1Vec[0] || !histVec[0]) {
+                return nullptr;
+            }
+    
+            auto* tf1 = tf1Vec[0];
+            auto* hist = histVec[0].get();
+    
+            hist->Fit(tf1, "Q"); // "Q" for quiet. Add "R" for range only if needed
+    
+            return tf1;
+        },
+        {"tf1_blocks","histograms_blocks"}
+    );
 
     // Step 8: Determine additional quantities (energies, noise, signal widths, etc.)
     // Could also compare fit results from initial fit parameters.
@@ -331,7 +381,7 @@ void DataAnalysisManager::ProcessData() {
         "H.gtr.dp",
         "adc_results_blocks",
         "block_peaks",
-        "fit_results_blocks",
+        "fit_params_blocks",
         "float_blocks"
     };
 
@@ -340,5 +390,6 @@ void DataAnalysisManager::ProcessData() {
 
     // Write the final TTree to disk. Note: Snapshot is the terminal action.
     //if(fileManager)
-    dfFitParams.Snapshot("TOUT", "output/tmp.root", outputBranches);
+    //ROOT::RDF::SaveGraph(dfHistograms);
+    dfFitBlocks.Snapshot("TOUT", "output/tmp.root", outputBranches);
 }

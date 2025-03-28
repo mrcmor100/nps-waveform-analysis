@@ -10,7 +10,7 @@ add_compile_options(-O3)
 include(FetchContent)
 
 # --- Find ROOT ---
-find_package(ROOT REQUIRED COMPONENTS RIO Hist Tree ROOTVecOps MathMore)
+find_package(ROOT REQUIRED COMPONENTS RIO Hist Tree ROOTVecOps ROOTDataFrame MathMore)
 
 # Define ROOT include directories
 include("${ROOT_USE_FILE}")
@@ -44,7 +44,7 @@ target_link_libraries(DataBlockDict ${ROOT_LIBRARIES})
 # --- Project Source Files ---
 add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchManager.cpp 
   src/ReferenceManager.cpp src/FileManager.cpp src/GlobalManager.cpp src/DataAnalysisManager.cpp
-  src/ApplicationManager.cpp)
+  src/ApplicationManager.cpp src/WaveformFitter.cpp)
 
 add_custom_command(
   TARGET RootWaveformAnalysis POST_BUILD

@@ -1,3 +1,6 @@
+#ifndef DATATYPES_HPP
+#define DATATYPES_HPP
+
 #include <stdexcept>
 #include <iostream>
 #include <array>
@@ -97,6 +100,8 @@ struct BlockFitParameters {
     // Maybe I shouldn't use PeakContainer::maxPeaks size?
     std::array<PeakFitParameter,PeakContainer::maxPeaks> peak_parameters;
     // Good flag indicating whether the "good" peak condition was met.
+    int nPeaks = 0.;
+    int block = 0;
     bool good = false;
 };
 
@@ -116,3 +121,5 @@ struct BlockFitResults {
     double time_to_fit; // Or high resolution clock.
     bool good_fit;
 };
+
+#endif
