@@ -9,7 +9,7 @@
     "output_subdir": "output/",
     "input_rootfile": "nps_hms_coin_<run>_<segment>_1_-1.root",
     "input_tree": "T",
-    "input_segments": "all",
+    "input_segments": [0],
     "output_tree": "TOUT",
     "output_rootfile": "nps_hms_coin_<run>_out.root"
   },
@@ -28,7 +28,7 @@
     "nslots": 1104, 
     "ADCtomV": 0.244140625, 
     "integtopC": 0.020,
-    "timerefacc": 0.0,
+    "timerefacc": -4.5,
     "peak_tolerance": 4.1
   }, 
 

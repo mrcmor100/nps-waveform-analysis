@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <array>
+#include "TH1.h"
 #include "Config.hpp"
 
 template <typename T, size_t N>
@@ -8,21 +9,36 @@ struct DataBlock {
     T block_id;
     T n_samples;
     T data[N];
+    T errors[N];
 
     // Default constructor: needed for vector default construction.
     DataBlock() : block_id(0), n_samples(0) {
         // Optionally initialize data to 0.
-        for (size_t i = 0; i < N; ++i)
+        for (size_t i = 0; i < N; ++i) {
             data[i] = T();
+            errors[i] = T();
+        }
     }
 
-    DataBlock(T id, T samples, const T* input_data, size_t num_to_copy) : block_id(id), n_samples(samples) {
+    DataBlock(T id, T samples, const T* input_data, size_t num_to_copy, bool set_errors = false)
+             : block_id(id), n_samples(samples) {
         size_t safe_copy_size = std::min(num_to_copy, N);  // Prevent out-of-bounds
         std::memcpy(data, input_data, safe_copy_size * sizeof(T));  
         // Zero out the rest if necessary
         if (safe_copy_size < N) {
             std::cout << "Should Never be called!\n";
             std::fill(data + safe_copy_size, data + N, T(0));
+        }
+        if (set_errors) {
+            SetErrors();
+        }
+    }
+
+    void SetErrors() {
+        constexpr T const_error = std::abs(static_cast<T>(1.0) * static_cast<T>(4.096));
+        for (size_t i = 0; i < N; ++i) {
+            T val = data[i];
+            errors[i] = (val < static_cast<T>(1.0)) ? const_error : std::abs(val * 4.096) / 4.096;
         }
     }
 };

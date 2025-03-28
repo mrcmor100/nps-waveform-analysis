@@ -95,7 +95,7 @@ void DataAnalysisManager::ProcessData() {
                 float n_samples = float_data[offset + 1];
                 size_t num_to_copy = std::min<size_t>(n_samples, NumSamples);
                 const float* waveform_ptr = &float_data[offset + 2];
-                blocks.emplace_back(channel, n_samples, waveform_ptr, num_to_copy);
+                blocks.emplace_back(channel, n_samples, waveform_ptr, num_to_copy,true);
             }
             return blocks;
         },
@@ -285,6 +285,36 @@ void DataAnalysisManager::ProcessData() {
         },
         {"block_peaks"}
     );
+    
+    auto makeHistogramFromBlock = [](const DataBlockFloat& block, const std::string& name) 
+        -> std::shared_ptr<TH1F> {
+        auto hist = std::make_shared<TH1F>(
+            name.c_str(), "Waveform Histogram",
+            NumSamples, -0.5, NumSamples + 0.5
+        );
+    
+        for (int i = 0; i < NumSamples; ++i) {
+            hist->SetBinContent(i + 1, block.data[i]);
+            hist->SetBinError(i + 1, block.errors[i]);
+        }
+    
+        return hist;
+    };
+
+    auto dfHistograms = dfFitParams.Define("histograms_blocks",
+        [makeHistogramFromBlock](const std::vector<DataBlockFloat>& float_blocks) -> std::vector<std::shared_ptr<TH1F>> {
+            std::vector<std::shared_ptr<TH1F>> results;
+            results.reserve(float_blocks.size());
+            std::string name;
+            for (size_t i = 0; i < float_blocks.size(); ++i) {
+                name = "hist_block" + std::to_string(static_cast<int>(float_blocks[i].block_id));
+                results.push_back(makeHistogramFromBlock(float_blocks[i], name));
+            }
+
+            return results;
+        },
+        {"float_blocks"}
+    );    
 
     // Step 7a: Determine errors for samples for block
     // Step 7b: Fit the actual data using Minuit2 and the relevant branches!
