@@ -19,6 +19,8 @@ void printUsage(const char* exeName) {
 
 int main(int argc, char* argv[]) {
     gSystem->Load("libDataBlockDict.so");
+    TH1::AddDirectory(false);
+    gROOT->SetBatch(kTRUE); // Avoid GUI drawing
     // Check if the required run parameter is provided.
     if (argc < 2) {
         printUsage(argv[0]);

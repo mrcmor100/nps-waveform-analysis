@@ -106,20 +106,23 @@ struct BlockFitParameters {
 };
 
 struct PeakFitResults {
-    bool good;       // true if a good peak is found
-    double time;     // selected pulse time (or fallback)
-    double amplitude; // selected pulse amplitude (or fallback)
+    double time = -999.;
+    double time_err = -1.;
+    double amplitude = -999.;
+    double amplitude_err = -1.;
 };
 
 struct PedestalFitResults {
-    double ped_value;
+    double pedestal = -999.;
+    double pedestal_err = -1.;
 };
 
 struct BlockFitResults {
-    PedestalFitResults ped_res;
-    std::array<PeakFitResults,PeakContainer::maxPeaks> peak_res;
-    double time_to_fit; // Or high resolution clock.
-    bool good_fit;
+    PedestalFitResults pedestal;               // Fit result for baseline
+    std::vector<PeakFitResults> peaks;         // One per peak in fit
+    double chi2 = -1.;                         // Total chi-squared from TF1
+    int ndf = -1;                              // Degrees of freedom
+    bool good = false;                         // Fit passed quality threshold
 };
 
 #endif

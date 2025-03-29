@@ -295,9 +295,10 @@ void DataAnalysisManager::ProcessData() {
     auto makeHistogramFromBlock = [](const DataBlockFloat& block, const std::string& name) 
         -> std::shared_ptr<TH1F> {
         auto hist = std::make_shared<TH1F>(
-            name.c_str(), "Waveform Histogram",
+            name.c_str(), "",
             NumSamples, -0.5, NumSamples + 0.5
         );
+        hist->SetDirectory(nullptr); // Silly root shenanigans.
     
         for (int i = 0; i < NumSamples; ++i) {
             hist->SetBinContent(i + 1, block.data[i]);
@@ -313,7 +314,7 @@ void DataAnalysisManager::ProcessData() {
             results.reserve(float_blocks.size());
             std::string name;
             for (size_t i = 0; i < float_blocks.size(); ++i) {
-                name = "hist_block" + std::to_string(static_cast<int>(float_blocks[i].block_id));
+                name = "";
                 results.push_back(makeHistogramFromBlock(float_blocks[i], name));
             }
 
@@ -352,24 +353,6 @@ void DataAnalysisManager::ProcessData() {
         {"fit_params_blocks"}
     );
 
-    auto dfFitBlocks = dfTF1Blocks.Define("the_fit_applied",
-        [](const std::vector<TF1*>& tf1Vec,
-           const std::vector<std::shared_ptr<TH1F>> histVec)
-            -> TF1*
-        {
-            if (tf1Vec.empty() || histVec.empty() || !tf1Vec[0] || !histVec[0]) {
-                return nullptr;
-            }
-    
-            auto* tf1 = tf1Vec[0];
-            auto* hist = histVec[0].get();
-    
-            hist->Fit(tf1, "Q"); // "Q" for quiet. Add "R" for range only if needed
-    
-            return tf1;
-        },
-        {"tf1_blocks","histograms_blocks"}
-    );
 
     // Step 8: Determine additional quantities (energies, noise, signal widths, etc.)
     // Could also compare fit results from initial fit parameters.
@@ -382,7 +365,7 @@ void DataAnalysisManager::ProcessData() {
         "adc_results_blocks",
         "block_peaks",
         "fit_params_blocks",
-        "float_blocks"
+        "fit_results_block0"
     };
 
     // Should likely flatten objects and store minimal arrays instead of vectors.  
@@ -391,5 +374,5 @@ void DataAnalysisManager::ProcessData() {
     // Write the final TTree to disk. Note: Snapshot is the terminal action.
     //if(fileManager)
     //ROOT::RDF::SaveGraph(dfHistograms);
-    dfFitBlocks.Snapshot("TOUT", "output/tmp.root", outputBranches);
+    dfFitResults.Snapshot("TOUT", "output/tmp.root", outputBranches);
 }

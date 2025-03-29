@@ -40,7 +40,7 @@ TF1* WaveformFitter::CreateTF1ForBlock(const BlockFitParameters& fitParams) cons
         return sum + constantOffset;
     };
 
-    auto tf1 = new TF1("waveformFit", fitFunction, 0, 150, numParams); // Adjust range as needed
+    auto tf1 = new TF1("", fitFunction, 0, 150, numParams); // Adjust range as needed
 
     // Set pedestal
     tf1->SetParameter(0, fitParams.block_pedestal.pedestal);

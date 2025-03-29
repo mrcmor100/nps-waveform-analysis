@@ -18,4 +18,7 @@
 #pragma link C++ class PeakFitParameter+;
 #pragma link C++ class PedestalFitParameter+;
 #pragma link C++ class std::vector<BlockFitParameters>+;
+#pragma link C++ class PeakFitResults+;
+#pragma link C++ class PedestalFitResults+;
+#pragma link C++ class BlockFitResults+;
 #endif
