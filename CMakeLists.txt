@@ -46,11 +46,17 @@ add_executable(RootWaveformAnalysis main.cpp src/ConfigManager.cpp src/BranchMan
   src/ReferenceManager.cpp src/FileManager.cpp src/GlobalManager.cpp src/DataAnalysisManager.cpp
   src/ApplicationManager.cpp src/WaveformFitter.cpp)
 
+add_executable(WaveformFitSkeleton src/WaveformSkeleton.cpp src/ReferenceManager.cpp src/ConfigManager.cpp)
+
 add_custom_command(
   TARGET RootWaveformAnalysis POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy
   ${CMAKE_BINARY_DIR}/RootWaveformAnalysis
   ${CMAKE_SOURCE_DIR}/RootWaveformAnalysis
+  TARGET WaveformFitSkeleton POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+  ${CMAKE_BINARY_DIR}/WaveformFitSkeleton
+  ${CMAKE_SOURCE_DIR}/WaveformFitSkeleton
   COMMAND ${CMAKE_COMMAND} -E copy
   ${CMAKE_BINARY_DIR}/libDataBlockDict.so
   ${CMAKE_SOURCE_DIR}/libDataBlockDict.so
@@ -61,6 +67,7 @@ add_custom_command(
 )
 # --- Include Directories ---
 target_include_directories(RootWaveformAnalysis PRIVATE ${ROOT_INCLUDE_DIRS} include)
-
+target_include_directories(WaveformFitSkeleton PRIVATE ${ROOT_INCLUDE_DIRS} include)
 # --- Link Libraries ---
 target_link_libraries(RootWaveformAnalysis PRIVATE ${ROOT_LIBRARIES} DataBlockDict nlohmann_json::nlohmann_json)
+target_link_libraries(WaveformFitSkeleton PRIVATE ${ROOT_LIBRARIES} DataBlockDict nlohmann_json::nlohmann_json)

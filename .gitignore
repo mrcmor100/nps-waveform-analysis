@@ -1,5 +1,6 @@
 # Executable
 RootWaveformAnalysis
+WaveformFitSkeleton
 
 # Ignore data directory
 /data/

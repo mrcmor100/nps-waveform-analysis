@@ -242,6 +242,7 @@ void DataAnalysisManager::ProcessData() {
             params.peak_parameters[0].amplitude = 2.0;
             params.peak_parameters[0].amplitude_lower_limit = 0.05;
             params.peak_parameters[0].amplitude_upper_limit = 10;
+            //Probably need to add one to nPeaks in this case
         }
         
         // Process peaks in the block and fill the first good peak parameter.
@@ -250,7 +251,18 @@ void DataAnalysisManager::ProcessData() {
             if (pc.peaks[i].good) {
                 params.good = true;
                 // Compute the corrected time relative to the time reference.
-                double correctedTime = pc.peaks[i].time - _timeref.at(pc.block);
+                double correctedTime = pc.peaks[i].time - _timeref.at(pc.block) / 4.;
+                params.peak_parameters[i].time = correctedTime;
+                params.peak_parameters[i].time_lower_limit = correctedTime - 3;
+                params.peak_parameters[i].time_upper_limit = correctedTime + 3;
+                
+                double amplitude = pc.peaks[i].amplitude;
+                params.peak_parameters[i].amplitude = amplitude;
+                params.peak_parameters[i].amplitude_lower_limit = amplitude * 0.2;
+                params.peak_parameters[i].amplitude_upper_limit = amplitude * 3;
+            } else {
+                // Compute the corrected time relative to the time reference.
+                double correctedTime = pc.peaks[i].time - _timeref.at(pc.block) / 4.;
                 params.peak_parameters[i].time = correctedTime;
                 params.peak_parameters[i].time_lower_limit = correctedTime - 3;
                 params.peak_parameters[i].time_upper_limit = correctedTime + 3;
@@ -261,18 +273,18 @@ void DataAnalysisManager::ProcessData() {
                 params.peak_parameters[i].amplitude_upper_limit = amplitude * 3;
             }
         }
-        if(params.good == false) {
-            int lp  = pc.nPeaks -1; // TODO: Fix this to be nPeaks, but causes...
-            // Stack Smashing currently if nPeaks is PeakContainer::maxPeaks.
-            // Still want to try and fit a pulse in time.
-            // Replace the last peaks attempted fit?
-            params.peak_parameters[lp].time = _timerefacc;
-            params.peak_parameters[lp].time_lower_limit = _timerefacc - 4;
-            params.peak_parameters[lp].time_upper_limit = _timerefacc + 4;
-            params.peak_parameters[lp].amplitude = 2.0;
-            params.peak_parameters[lp].amplitude_lower_limit = 0.05;
-            params.peak_parameters[lp].amplitude_upper_limit = 10;
-        }
+        // if(params.good == false) {
+        //     int lp  = pc.nPeaks -1; // TODO: Fix this to be nPeaks, but causes...
+        //     // Stack Smashing currently if nPeaks is PeakContainer::maxPeaks.
+        //     // Still want to try and fit a pulse in time.
+        //     // Replace the last peaks attempted fit?
+        //     params.peak_parameters[lp].time = _timerefacc;
+        //     params.peak_parameters[lp].time_lower_limit = _timerefacc - 4;
+        //     params.peak_parameters[lp].time_upper_limit = _timerefacc + 4;
+        //     params.peak_parameters[lp].amplitude = 2.0;
+        //     params.peak_parameters[lp].amplitude_lower_limit = 0.05;
+        //     params.peak_parameters[lp].amplitude_upper_limit = 10;
+        // }
         return params;
     };
 
@@ -290,73 +302,6 @@ void DataAnalysisManager::ProcessData() {
         {"block_peaks"}
     );
 
-    // Step 7a: Create a histogram from a block to use the TH1::Fit method
-    // OPTIONAL: Instead of use CPU, stop here and use GPUs for fitting.
-    auto makeHistogramFromBlock = [](const DataBlockFloat& block, const std::string& name) 
-        -> std::shared_ptr<TH1F> {
-        auto hist = std::make_shared<TH1F>(
-            name.c_str(), "",
-            NumSamples, -0.5, NumSamples + 0.5
-        );
-        hist->SetDirectory(nullptr); // Silly root shenanigans.
-    
-        for (int i = 0; i < NumSamples; ++i) {
-            hist->SetBinContent(i + 1, block.data[i]);
-            hist->SetBinError(i + 1, block.errors[i]);
-        }
-    
-        return hist;
-    };
-
-    auto dfHistograms = dfFitParams.Define("histograms_blocks",
-        [makeHistogramFromBlock](const std::vector<DataBlockFloat>& float_blocks) -> std::vector<std::shared_ptr<TH1F>> {
-            std::vector<std::shared_ptr<TH1F>> results;
-            results.reserve(float_blocks.size());
-            std::string name;
-            for (size_t i = 0; i < float_blocks.size(); ++i) {
-                name = "";
-                results.push_back(makeHistogramFromBlock(float_blocks[i], name));
-            }
-
-            return results;
-        },
-        {"float_blocks"}
-    );
-
-    // Step 7b: Setup a fit function with the fit_params_blocks.
-    // Make sure to save real time required to fit, and store relevant metadata.
-    //  Extract chisq, peaks, etc.
-    auto makeTF1FromFitParams = [this](const BlockFitParameters& fitParams)
-    -> TF1*
-    {
-        int blockId = fitParams.block;
-        const ROOT::Math::Interpolator* interp = referenceManager->GetInterpolator(blockId);
-        WaveformFitter fitter = WaveformFitter(interp, 1., 109.);
-        return fitter.CreateTF1ForBlock(fitParams);
-    };
-
-
-    auto dfTF1Blocks = dfHistograms.Define("tf1_blocks",
-        [makeTF1FromFitParams](const std::vector<BlockFitParameters>& fitParamsVec)
-            -> std::vector<TF1*>
-        {
-            std::vector<TF1*> tf1Vec;
-            tf1Vec.reserve(fitParamsVec.size());
-    
-            for (size_t i = 0; i < fitParamsVec.size(); ++i)
-            {
-                tf1Vec.emplace_back(makeTF1FromFitParams(fitParamsVec[i]));
-            }
-    
-            return tf1Vec;
-        },
-        {"fit_params_blocks"}
-    );
-
-
-    // Step 8: Determine additional quantities (energies, noise, signal widths, etc.)
-    // Could also compare fit results from initial fit parameters.
-
     // Define the final output branches.
     std::vector<std::string> outputBranches = {
         "H.gtr.th",
@@ -364,8 +309,8 @@ void DataAnalysisManager::ProcessData() {
         "H.gtr.dp",
         "adc_results_blocks",
         "block_peaks",
-        "fit_params_blocks",
-        "fit_results_block0"
+        "float_blocks",
+        "fit_params_blocks"
     };
 
     // Should likely flatten objects and store minimal arrays instead of vectors.  
@@ -374,5 +319,5 @@ void DataAnalysisManager::ProcessData() {
     // Write the final TTree to disk. Note: Snapshot is the terminal action.
     //if(fileManager)
     //ROOT::RDF::SaveGraph(dfHistograms);
-    dfFitResults.Snapshot("TOUT", "output/tmp.root", outputBranches);
+    dfFitParams.Snapshot("TOUT", "output/tmp.root", outputBranches);
 }
